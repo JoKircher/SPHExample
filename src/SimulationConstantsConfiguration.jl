@@ -32,7 +32,7 @@ using SimulationConstantsConfiguration
 constants = SimulationConstants(ρ₀=1017, dx=0.03, α=0.02)
 ```
 """
-@with_kw struct SimulationConstants{T<:AbstractFloat}
+@with_kw struct SimulationConstants{T<:AbstractFloat} # TODO maybe change the structure of parameters
     ρ₀::T  = 1000                 ; @assert ρ₀  > 0 "Density (ρ₀) must be positive"
     dx::T  = 0.02                 ; @assert dx  > 0 "Grid spacing (dx) must be positive"
     h::T   = 1.2 * sqrt(2) * dx   ; @assert h   > 0 "Smoothing length (h) must be positive"

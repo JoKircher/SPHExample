@@ -206,7 +206,7 @@ function RunSimulation(;FluidCSV::String,
         # We calculate viscosity contribution and momentum equation at time step "n"
         @timeit HourGlass "2| Pressure" Pressure!(Pressureᵢ, Density, SimConstants)
         @timeit HourGlass "2| ∂vᵢ∂t!"   ∂vᵢ∂t!(I, J, dvdtIˣ, dvdtIʸ, dvdtIᶻ, dvdtLˣ, dvdtLʸ, dvdtLᶻ,Density,KernelGradientLˣ,KernelGradientLʸ,KernelGradientLᶻ,Pressureᵢ, SimConstants)
-        @timeit HourGlass "2| ∂Πᵢⱼ∂t!"  ∂Πᵢⱼ∂t!(dvdtIˣ, dvdtIʸ, dvdtIᶻ, dvdtLˣ, dvdtLʸ, dvdtLᶻ, I,J, D, xᵢⱼˣ, xᵢⱼʸ, xᵢⱼᶻ ,Density, Velocityˣ, Velocityʸ, Velocityᶻ,KernelGradientLˣ,KernelGradientLʸ,KernelGradientLᶻ,SimConstants)
+        # @timeit HourGlass "2| ∂Πᵢⱼ∂t!"  ∂Πᵢⱼ∂t!(dvdtIˣ, dvdtIʸ, dvdtIᶻ, dvdtLˣ, dvdtLʸ, dvdtLᶻ, I,J, D, xᵢⱼˣ, xᵢⱼʸ, xᵢⱼᶻ ,Density, Velocityˣ, Velocityʸ, Velocityᶻ,KernelGradientLˣ,KernelGradientLʸ,KernelGradientLᶻ,SimConstants)
         @timeit HourGlass "2| Gravity"  dvdtI   .+=    GravityContributionArray
 
         # Based on the density derivative at "n", we calculate "n+½"
@@ -227,11 +227,11 @@ function RunSimulation(;FluidCSV::String,
         # Viscous contribution and momentum equation at "n+½"
         @timeit HourGlass "2| Pressure2"     Pressure!(Pressureᵢ, ρₙ⁺, SimConstants)
         @timeit HourGlass "2| ∂vᵢ∂t!2"       ∂vᵢ∂t!(I, J, Accelerationˣ, Accelerationʸ, Accelerationᶻ, dvdtLˣ, dvdtLʸ, dvdtLᶻ,ρₙ⁺,KernelGradientLˣ,KernelGradientLʸ,KernelGradientLᶻ,Pressureᵢ, SimConstants)
-        @timeit HourGlass "2| ∂Πᵢⱼ∂t!2"      ∂Πᵢⱼ∂t!(Accelerationˣ, Accelerationʸ, Accelerationᶻ, dvdtLˣ, dvdtLʸ, dvdtLᶻ, I,J, D, xᵢⱼˣ, xᵢⱼʸ, xᵢⱼᶻ , ρₙ⁺, Velocityₙ⁺ˣ, Velocityₙ⁺ʸ, Velocityₙ⁺ᶻ,KernelGradientLˣ,KernelGradientLʸ,KernelGradientLᶻ,SimConstants)
+        # @timeit HourGlass "2| ∂Πᵢⱼ∂t!2"      ∂Πᵢⱼ∂t!(Accelerationˣ, Accelerationʸ, Accelerationᶻ, dvdtLˣ, dvdtLʸ, dvdtLᶻ, I,J, D, xᵢⱼˣ, xᵢⱼʸ, xᵢⱼᶻ , ρₙ⁺, Velocityₙ⁺ˣ, Velocityₙ⁺ʸ, Velocityₙ⁺ᶻ,KernelGradientLˣ,KernelGradientLʸ,KernelGradientLᶻ,SimConstants)
         @timeit HourGlass "2| Acceleration2" Acceleration .+= GravityContributionArray
 
         # Factor for properly time stepping the density to "n+1" - We use the symplectic scheme as done in DualSPHysics
-        # @timeit HourGlass "2| DensityEpsi!"  DensityEpsi!(Density,dρdtIₙ⁺,ρₙ⁺,dt)
+        @timeit HourGlass "2| DensityEpsi!"  DensityEpsi!(Density,dρdtIₙ⁺,ρₙ⁺,dt)
 
         # Clamp boundary particles minimum density to avoid suction
         @timeit HourGlass "2| LimitDensityAtBoundary!(Density)" LimitDensityAtBoundary!(Density,BoundaryBool,ρ₀)
@@ -250,8 +250,8 @@ function RunSimulation(;FluidCSV::String,
         # OutVTP is based on a well-developed Julia package, WriteVTK, while CustomVTP is based on my hand-rolled solution.
         # CustomVTP is about 10% faster, but does not mean much in this case.
         if SimMetaData.Iteration % SimMetaData.OutputIteration == 0
-            @timeit HourGlass "4| OutputVTP" OutputVTP(SimMetaData,SimConstants,Position; KernelGradient, Density, Acceleration, Velocity) #Kernel
-            end
+            @timeit HourGlass "4| OutputVTP" OutputVTP(SimMetaData,SimConstants,Position; KernelGradient, Density, Acceleration, Velocity, Pressureᵢ) #Kernel
+        end
 
         next!(SimMetaData.ProgressSpecification; showvalues = show_vals(SimMetaData))
     end
@@ -268,8 +268,8 @@ begin
     T = Float64
     SimMetaData  = SimulationMetaData{T}(
                                     SimulationName="MySimulation", 
-                                    SaveLocation=raw"C:\Users\kirchejo\Repos\SPHExample\results\only_gravity", 
-                                    MaxIterations=10001,
+                                    SaveLocation=raw"C:\Users\kirchejo\Repos\SPHExample\results\wo_diffussion_arti_visco", 
+                                    MaxIterations=20001,
                                     OutputIteration=50,
     )
     # Initialze the constants to use

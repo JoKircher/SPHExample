@@ -24,9 +24,10 @@ function LoadParticlesFromCSV(float_type, fluid_csv,boundary_csv)
     density_fluid    = Vector{float_type}()
     density_bound    = Vector{float_type}()
 
-    # Since the particles are produced in DualSPHysics
+    # Since the particles are produced in DualSPHysics, read positions from Particles and Boundary, append in same vector
+    # densities of fluid and boundary are stored in seperate vectors
     for i = 1:length(P1F)
-        push!(points,SVector(P1F[i],P3F[i],P2F[i]))
+        push!(points,SVector(P1F[i],P3F[i],P2F[i])) #SVector more efficient
         push!(density_fluid,DF_FLUID.Rhop[i])
     end
 

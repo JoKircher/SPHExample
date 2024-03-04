@@ -72,8 +72,8 @@ function RunSimulation(;FluidCSV::String,
     # Read this as "GravityFactor * g", so -1 means negative acceleration for fluid particles
     # 1 means boundary particles push back against gravity
     GravityFactor            = [-ones(size(density_fluid,1)) ; ones(size(density_bound,1))]
-    GravityContribution      = SVector(0.0,g,0.0)
-    GravityContributionArray = map((x)->x * GravityContribution,GravityFactor) 
+    GravityContribution      = SVector(0.0,g,0.0) # XY plane so g in netative y 
+    GravityContributionArray = map((x)->x * GravityContribution,GravityFactor) # all fluid particles get a negative gravity acceleration
 
     # MotionLimiter is what allows fluid particles to move, while not letting the velocity of boundary
     # particles change
@@ -96,22 +96,22 @@ function RunSimulation(;FluidCSV::String,
     dvdtIˣ            = zeros(FloatType,  SizeOfParticlesI1)
     dvdtIʸ            = zeros(FloatType,  SizeOfParticlesI1)
     dvdtIᶻ            = zeros(FloatType,  SizeOfParticlesI1)
-    dvdtI             = StructArray{TypeOfParticleI3}(( dvdtIˣ, dvdtIʸ, dvdtIᶻ))
+    dvdtI             = StructArray{TypeOfParticleI3}(( dvdtIˣ, dvdtIʸ, dvdtIᶻ)) # TODO what this
 
     dvdtLˣ            = zeros(FloatType,  SizeOfParticlesI1)
     dvdtLʸ            = zeros(FloatType,  SizeOfParticlesI1)
     dvdtLᶻ            = zeros(FloatType,  SizeOfParticlesI1)
-    dvdtL             = StructArray{TypeOfParticleI3}(( dvdtLˣ, dvdtLʸ, dvdtLᶻ))
+    dvdtL             = StructArray{TypeOfParticleI3}(( dvdtLˣ, dvdtLʸ, dvdtLᶻ)) # TODO what this
 
     ρₙ⁺               = zeros(FloatType,         SizeOfParticlesI1)
 
     Positionₙ⁺ˣ       = zeros(FloatType,  SizeOfParticlesI1)
     Positionₙ⁺ʸ       = zeros(FloatType,  SizeOfParticlesI1)
     Positionₙ⁺ᶻ       = zeros(FloatType,  SizeOfParticlesI1)
-    Positionₙ⁺        = StructArray{TypeOfParticleI3}(( Positionₙ⁺ˣ, Positionₙ⁺ʸ, Positionₙ⁺ᶻ))
+    Positionₙ⁺        = StructArray{TypeOfParticleI3}(( Positionₙ⁺ˣ, Positionₙ⁺ʸ, Positionₙ⁺ᶻ)) # TODO what this
 
   
-    dρdtIₙ⁺           = zeros(FloatType,         SizeOfParticlesI1)
+    dρdtIₙ⁺           = zeros(FloatType,         SizeOfParticlesI1) # TODO what this
 
     KernelGradientˣ   = zeros(FloatType,  SizeOfParticlesI1)
     KernelGradientʸ   = zeros(FloatType,  SizeOfParticlesI1)
@@ -136,7 +136,7 @@ function RunSimulation(;FluidCSV::String,
     Velocityₙ⁺ˣ        = zeros(FloatType,  SizeOfParticlesI1)
     Velocityₙ⁺ʸ        = zeros(FloatType,  SizeOfParticlesI1)
     Velocityₙ⁺ᶻ        = zeros(FloatType,  SizeOfParticlesI1)
-    Velocityₙ⁺         = StructArray{TypeOfParticleI3}(( Velocityₙ⁺ˣ, Velocityₙ⁺ʸ, Velocityₙ⁺ᶻ))
+    Velocityₙ⁺         = StructArray{TypeOfParticleI3}(( Velocityₙ⁺ˣ, Velocityₙ⁺ʸ, Velocityₙ⁺ᶻ)) # TODO what this
 
     Positionˣ          = getindex.(points,1)
     Positionʸ          = getindex.(points,2)
@@ -149,7 +149,7 @@ function RunSimulation(;FluidCSV::String,
     xᵢⱼ                = StructArray{TypeOfParticleI3}(( xᵢⱼˣ, xᵢⱼʸ, xᵢⱼᶻ))
 
     drhopLp           = zeros(FloatType,         SizeOfParticlesI1)
-    drhopLn           = zeros(FloatType,         SizeOfParticlesI1) 
+    drhopLn           = zeros(FloatType,         SizeOfParticlesI1)  # TODO what this
          
     Pressureᵢ         = zeros(FloatType,         SizeOfParticlesI1)
 
@@ -160,9 +160,9 @@ function RunSimulation(;FluidCSV::String,
     I                 = zeros(Int64,   SizeOfParticlesI1)
     J                 = zeros(Int64,   SizeOfParticlesI1)
     D                 = zeros(Float64, SizeOfParticlesI1)
-    list_me           = StructArray{Tuple{Int64,Int64,Float64}}((I,J,D))
+    list_me           = StructArray{Tuple{Int64,Int64,Float64}}((I,J,D)) # each entry is a vector with the corresponding values for I, J, D
 
-    system  = InPlaceNeighborList(x=Position, cutoff=2*h, parallel=true)
+    system  = InPlaceNeighborList(x=Position, cutoff=2*h, parallel=true) # TODO test time of self implemented neigborhood search and CellListMap.jl
 
     # Save the initial particle layout with dummy values
     create_vtp_file(SimMetaData,SimConstants,Position; Kernel, KernelGradient, Density, Acceleration, Velocity)
@@ -170,8 +170,12 @@ function RunSimulation(;FluidCSV::String,
     # Define Progress spec for displaying simulation results
     show_vals(x) = [(:(Iteration),format(FormatExpr("{1:d}"), x.Iteration)), (:(TotalTime),format(FormatExpr("{1:3.3f}"),x.TotalTime))]
 
+    ## MAIN-LOOP ##
     @inbounds for SimMetaData.Iteration = 1:MaxIterations
         # Be sure to update and retrieve the updated neighbour list at each time step
+        # New positions are fed to the neighborlist
+        # New Particle interactions are calculated
+        # List of interactions is updated to fit new number of interactions
         @timeit HourGlass "0 | Update Neighbour system.nb.list" begin
             update!(system,Position)
             neighborlist!(system)
@@ -186,13 +190,13 @@ function RunSimulation(;FluidCSV::String,
             ResizeBuffers!(KernelL, KernelGradientL, dvdtL, xᵢⱼ, drhopLp, drhopLn; N = system.nb.n)
         end
 
-         # Here we calculate the distances between particles, output the kernel gradient value for each particle and also the kernel gradient value
+        # Here we calculate the distances between particles, output the kernel gradient value for each particle and also the kernel gradient value
         # based on the pair-to-pair interaction system.nb.list, for use in later calculations.
         # Other functions follow a similar format, with the "I" and "L" ending
         @timeit HourGlass "1 | Update xᵢⱼ, kernel values and kernel gradient" begin
             updatexᵢⱼ!(xᵢⱼˣ, xᵢⱼʸ, xᵢⱼᶻ, I, J, Positionˣ, Positionʸ, Positionᶻ)
             # Here we output the kernel value for each particle. Note that KernelL is list of interactions, while Kernel is the value for each actual particle
-            ∑ⱼWᵢⱼ!(Kernel, KernelL, I, J, D, SimConstants)
+            ∑ⱼWᵢⱼ!(Kernel, KernelL, I, J, D, SimConstants) # TODO test simplification by removing the Kernel field
             ∑ⱼ∇ᵢWᵢⱼ!(KernelGradientˣ,KernelGradientʸ,KernelGradientᶻ,KernelGradientLˣ,KernelGradientLʸ,KernelGradientLᶻ, I, J, D, xᵢⱼˣ, xᵢⱼʸ, xᵢⱼᶻ, SimConstants)
         end
 
@@ -206,6 +210,8 @@ function RunSimulation(;FluidCSV::String,
         @timeit HourGlass "2| Gravity"  dvdtI   .+=    GravityContributionArray
 
         # Based on the density derivative at "n", we calculate "n+½"
+        # Leapfrog_integration
+        # https://en.wikipedia.org/wiki/Leapfrog_integration
         @timeit HourGlass "2| ρₙ⁺" @. ρₙ⁺  = Density  + dρdtI * (dt/2)
         # We make sure to limit the density of boundary particles in such a way that they cannot produce suction
         @timeit HourGlass "2| LimitDensityAtBoundary!(ρₙ⁺)" LimitDensityAtBoundary!(ρₙ⁺,BoundaryBool,ρ₀)
@@ -244,7 +250,7 @@ function RunSimulation(;FluidCSV::String,
         # OutVTP is based on a well-developed Julia package, WriteVTK, while CustomVTP is based on my hand-rolled solution.
         # CustomVTP is about 10% faster, but does not mean much in this case.
         if SimMetaData.Iteration % SimMetaData.OutputIteration == 0
-            @timeit HourGlass "4| OutputVTP" OutputVTP(SimMetaData,SimConstants,Position; Kernel, KernelGradient, Density, Acceleration, Velocity)
+            @timeit HourGlass "4| OutputVTP" OutputVTP(SimMetaData,SimConstants,Position; KernelGradient, Density, Acceleration, Velocity) #Kernel
             #@timeit HourGlass "4| CustomVTP" PolyDataTemplate(SimMetaData.SaveLocation * "/" * SimulationName * lpad(SimMetaData.Iteration,6,"0") * ".vtp", Position, ["Kernel", "KernelGradient", "Density", "Acceleration" , "Velocity"], Kernel, KernelGradient, Density, Acceleration, Velocity)
         end
 
@@ -263,8 +269,8 @@ begin
     T = Float64
     SimMetaData  = SimulationMetaData{T}(
                                     SimulationName="MySimulation", 
-                                    SaveLocation=raw"E:\SecondApproach\Results", 
-                                    MaxIterations=10001,
+                                    SaveLocation=raw"C:\Users\kirchejo\Repos\SPHExample\results", 
+                                    MaxIterations=20001,
                                     OutputIteration=50,
     )
     # Initialze the constants to use

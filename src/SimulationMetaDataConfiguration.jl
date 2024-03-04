@@ -42,14 +42,14 @@ metadata = SimulationMetaData(
 @with_kw mutable struct SimulationMetaData{FloatType <: AbstractFloat}
     SimulationName::String
     SaveLocation::String
-    HourGlass::TimerOutput           = TimerOutput()
+    HourGlass::TimerOutput           = TimerOutput() # Timer for the execution of different parts of the code 
     Iteration::Int                   = 0
     MaxIterations::Int               = 1000
     OutputIteration::Int             = 50
     CurrentTimeStep::FloatType       = 0
     TotalTime::FloatType             = 0
-    SilentOutput::Bool               = false
-    ThreadsCPU::Int                  = Threads.nthreads()
+    SilentOutput::Bool               = false # AFAK not used
+    ThreadsCPU::Int                  = Threads.nthreads() # AFAK not used
     ProgressSpecification::Progress  = Progress(MaxIterations)       
 end
 

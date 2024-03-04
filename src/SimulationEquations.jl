@@ -9,6 +9,7 @@ using Parameters
 using LoopVectorization
 
 # Function to calculate Kernel Value
+# Wendland Quintic Spline
 function Wᵢⱼ(αD,q)
     return αD*(1-q/2)^4*(2*q + 1)
 end
@@ -20,10 +21,10 @@ function ∑ⱼWᵢⱼ!(Kernel, KernelL, I, J, D, SimulationConstants)
     @unpack αD, h⁻¹ = SimulationConstants
     
     # Calculation
-    @tturbo for iter in eachindex(D)
+    @tturbo for iter in eachindex(D) # TODO why here no clamp
         d = D[iter]
 
-        q = d * h⁻¹
+        q = d * h⁻¹ 
 
         W = Wᵢⱼ(αD,q)
 
@@ -31,6 +32,7 @@ function ∑ⱼWᵢⱼ!(Kernel, KernelL, I, J, D, SimulationConstants)
     end
 
     # Reduction
+    # TODO might be obsolete
     for iter in eachindex(I,J)
         i = I[iter]
         j = J[iter]
@@ -55,7 +57,7 @@ end
 #     return SVector(gradWx,gradWy,gradWz)
 # end
 
-# This is a much faster version of ∇ᵢWᵢⱼ
+# This is a much faster version of ∇ᵢWᵢⱼ TODO deprecated
 function Optim∇ᵢWᵢⱼ(αD,q,xᵢⱼ,h) 
     # Skip distances outside the support of the kernel:
     if 0 < q < 2
@@ -75,9 +77,9 @@ function ∑ⱼ∇ᵢWᵢⱼ!(KernelGradientIˣ,KernelGradientIʸ,KernelGradient
     @tturbo for iter in eachindex(I)
         i = I[iter]; j = J[iter]; d = D[iter]
 
-        q = clamp(d * h⁻¹, 0.0, 2.0)
+        q = clamp(d * h⁻¹, 0.0, 2.0) # q = d/h between 0.0 and 2.0
 
-        Fac = αD*5*(q-2)^3*q / (8h*(q*h+η²)) 
+        Fac = αD*5*(q-2)^3*q / (8h*(q*h+η²)) # TODO check the derivative aka check if different works
 
         ∇ᵢWᵢⱼˣ = Fac * xᵢⱼˣ[iter]  
         ∇ᵢWᵢⱼʸ = Fac * xᵢⱼʸ[iter]  
@@ -88,7 +90,7 @@ function ∑ⱼ∇ᵢWᵢⱼ!(KernelGradientIˣ,KernelGradientIʸ,KernelGradient
         KernelGradientLᶻ[iter] =  ∇ᵢWᵢⱼᶻ
     end
 
-
+    # TODO might be obsolete
     for iter in eachindex(I,J)
         i = I[iter]
         j = J[iter]
@@ -108,7 +110,6 @@ function ∑ⱼ∇ᵢWᵢⱼ!(KernelGradientIˣ,KernelGradientIʸ,KernelGradient
     return nothing
 end
 
-
 # Equation of State in Weakly-Compressible SPH
 function EquationOfState(ρ,c₀,γ,ρ₀)
     return ((c₀^2*ρ₀)/γ) * ((ρ/ρ₀)^γ - 1)
@@ -120,8 +121,6 @@ end
         Press[i] = EquationOfState(Density[i],c₀,γ,ρ₀)
     end
 end
-
-
 
 @inline function fancy7th(x)
     # todo tune the magic constant
@@ -145,14 +144,15 @@ end
 #faux(ρ₀, P, invCb) = ρ₀ * ( fancy7th( 1 + (P * invCb)) - 1)
 
 # The density derivative function INCLUDING density diffusion
-function ∂ρᵢ∂tDDT!(dρdtI, list, xᵢⱼ,xᵢⱼʸ,ρ,v,WgL,MotionLimiter, drhopLp, drhopLn, SimulationConstants)
+# continuity equation
+function ∂ρᵢ∂tDDT!(dρdtI, list, xᵢⱼ,xᵢⱼʸ,ρ,v,KernelGradientL,MotionLimiter, drhopLp, drhopLn, SimulationConstants)
     @unpack h,m₀,δᵩ,c₀,γ,g,ρ₀,η²,γ⁻¹ = SimulationConstants
 
     # Generate the needed constants
     Cb    = (c₀^2*ρ₀)/γ
     invCb = inv(Cb)
 
-    # Follow the implementation here: https://arxiv.org/abs/2110.10076
+    # Follow the implementation here: https://arxiv.org/abs/2110.10076 S.6
     @tturbo for iter in eachindex(list)
         Pᵢⱼᴴ  = ρ₀ * (-g) * -xᵢⱼʸ[iter]
         ρᵢⱼᴴ  = faux_fancy(ρ₀, Pᵢⱼᴴ, invCb)
@@ -173,29 +173,32 @@ function ∂ρᵢ∂tDDT!(dρdtI, list, xᵢⱼ,xᵢⱼʸ,ρ,v,WgL,MotionLimiter
         ρⱼ    = ρ[j]
         ρⱼᵢ   = ρⱼ - ρᵢ
         vᵢⱼ   = v[i] - v[j]
-        ∇ᵢWᵢⱼ = WgL[iter]
+        ∇ᵢWᵢⱼ = KernelGradientL[iter]
         
-        # First part of continuity equation
+        # First part of continuity equation https://cg.informatik.uni-freiburg.de/publications/2007_SCA_SPH.pdf S.3
         FirstPartOfContinuity = dot(m₀*vᵢⱼ,∇ᵢWᵢⱼ) # =dot(m₀*-vᵢⱼ,-∇ᵢWᵢⱼ)
 
+        dρdtI[i] += FirstPartOfContinuity
+        dρdtI[j] += FirstPartOfContinuity
+        # Density diffusion
 
-        # Implement for particle i
-        # Pᵢⱼᴴ = ρ₀ * (-g) * xⱼᵢ[2]
-        # ρᵢⱼᴴ = ρ₀ * ( ^( 1 + (Pᵢⱼᴴ/Cb), γ⁻¹) - 1)
-        ρᵢⱼᴴ = drhopLp[iter]
-        Ψᵢⱼ  = 2 * (ρⱼᵢ - ρᵢⱼᴴ) * xⱼᵢ/(r²+η²)
-        Dᵢ   = δᵩ * h * c₀ * (m₀/ρⱼ) * dot(Ψᵢⱼ,∇ᵢWᵢⱼ)
+        # # Implement for particle i # TODO Di als eingene Funktion für Studis
+        # # Pᵢⱼᴴ = ρ₀ * (-g) * xⱼᵢ[2]
+        # # ρᵢⱼᴴ = ρ₀ * ( ^( 1 + (Pᵢⱼᴴ/Cb), γ⁻¹) - 1)
+        # ρᵢⱼᴴ = drhopLp[iter] 
+        # Ψᵢⱼ  = 2 * (ρⱼᵢ - ρᵢⱼᴴ) * xⱼᵢ/(r²+η²)
+        # Dᵢ   = δᵩ * h * c₀ * (m₀/ρⱼ) * dot(Ψᵢⱼ,∇ᵢWᵢⱼ)
 
-        dρdtI[i] += FirstPartOfContinuity + Dᵢ * MotionLimiter[i]
+        # dρdtI[i] += FirstPartOfContinuity + Dᵢ * MotionLimiter[i]
 
-        # Implement for particle j
-        # Pⱼᵢᴴ = -Pᵢⱼᴴ
-        # ρⱼᵢᴴ = ρ₀ * ( ^( 1 + (Pⱼᵢᴴ/Cb), γ⁻¹) - 1)
-        ρⱼᵢᴴ = drhopLn[iter]
-        Ψⱼᵢ  = 2 * (-ρⱼᵢ - ρⱼᵢᴴ) * (-xⱼᵢ)/(r²+η²)
-        Dⱼ   = δᵩ * h * c₀ * (m₀/ρᵢ) * dot(Ψⱼᵢ,-∇ᵢWᵢⱼ)
+        # # Implement for particle j
+        # # Pⱼᵢᴴ = -Pᵢⱼᴴ
+        # # ρⱼᵢᴴ = ρ₀ * ( ^( 1 + (Pⱼᵢᴴ/Cb), γ⁻¹) - 1)
+        # ρⱼᵢᴴ = drhopLn[iter]
+        # Ψⱼᵢ  = 2 * (-ρⱼᵢ - ρⱼᵢᴴ) * (-xⱼᵢ)/(r²+η²)
+        # Dⱼ   = δᵩ * h * c₀ * (m₀/ρᵢ) * dot(Ψⱼᵢ,-∇ᵢWᵢⱼ)
 
-        dρdtI[j] += FirstPartOfContinuity + Dⱼ * MotionLimiter[i]
+        # dρdtI[j] += FirstPartOfContinuity + Dⱼ * MotionLimiter[i]
     end
 
     return nothing
@@ -249,7 +252,7 @@ function ∂vᵢ∂t!(I,J, dvdtIˣ, dvdtIʸ, dvdtIᶻ, dvdtLˣ, dvdtLʸ, dvdtL�
     return nothing
 end
 
-# The artificial viscosity term
+# The artificial viscosity term https://pysph.readthedocs.io/en/latest/reference/equations.html pysph.sph.basic_equations.MonaghanArtificialViscosity
 function ∂Πᵢⱼ∂t!(viscIˣ, viscIʸ, viscIᶻ, viscLˣ, viscLʸ, viscLᶻ, I,J, D, xᵢⱼˣ, xᵢⱼʸ, xᵢⱼᶻ ,Density, Velocityˣ, Velocityʸ, Velocityᶻ,KernelGradientLˣ,KernelGradientLʸ,KernelGradientLᶻ,SimulationConstants)
     @unpack h, α, c₀, m₀, η² = SimulationConstants
 
