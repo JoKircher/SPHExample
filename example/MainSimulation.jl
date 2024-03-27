@@ -269,7 +269,7 @@ begin
     T = Float64
     SimMetaData  = SimulationMetaData{T}(
                                     SimulationName="MySimulation", 
-                                    SaveLocation=raw"C:\Users\kirchejo\Repos\SPHExample\results", 
+                                    SaveLocation=raw"C:\Users\kirchejo\Repos\SPHExample\results\ground_truth/", 
                                     MaxIterations=20001,
                                     OutputIteration=50,
     )

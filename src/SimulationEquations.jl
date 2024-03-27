@@ -1,6 +1,6 @@
 module SimulationEquations
 
-export Wᵢⱼ, ∑ⱼWᵢⱼ!, Optim∇ᵢWᵢⱼ, ∑ⱼ∇ᵢWᵢⱼ!, EquationOfState, Pressure!, ∂Πᵢⱼ∂t!, ∂ρᵢ∂tDDT!, ∂vᵢ∂t!, DensityEpsi!, LimitDensityAtBoundary!, updatexᵢⱼ!
+export Wᵢⱼ, ∑ⱼWᵢⱼ!, ∑ⱼ∇ᵢWᵢⱼ!, EquationOfState, Pressure!, ∂Πᵢⱼ∂t!, ∂ρᵢ∂tDDT!, ∂vᵢ∂t!, DensityEpsi!, LimitDensityAtBoundary!, updatexᵢⱼ!
 
 using CellListMap
 using StaticArrays
@@ -42,30 +42,6 @@ function ∑ⱼWᵢⱼ!(Kernel, KernelL, I, J, D, SimulationConstants)
     end
 
     return nothing
-end
-# Original implementation of kernel gradient
-# function ∇ᵢWᵢⱼ(αD,q,xᵢⱼ,h)
-#     # Skip distances outside the support of the kernel:
-#     if q < 0.0 || q > 2.0
-#         return SVector(0.0,0.0,0.0)
-#     end
-
-#     gradWx = αD * 1/h * (5*(q-2)^3*q)/8 * (xᵢⱼ[1] / (q*h+1e-6))
-#     gradWy = αD * 1/h * (5*(q-2)^3*q)/8 * (xᵢⱼ[2] / (q*h+1e-6))
-#     gradWz = αD * 1/h * (5*(q-2)^3*q)/8 * (xᵢⱼ[3] / (q*h+1e-6)) 
-
-#     return SVector(gradWx,gradWy,gradWz)
-# end
-
-# This is a much faster version of ∇ᵢWᵢⱼ TODO deprecated
-function Optim∇ᵢWᵢⱼ(αD,q,xᵢⱼ,h) 
-    # Skip distances outside the support of the kernel:
-    if 0 < q < 2
-        Fac = αD*5*(q-2)^3*q / (8h*(q*h+1e-6)) 
-    else
-        Fac = 0.0 # or return zero(xᵢⱼ) 
-    end
-    return Fac .* xᵢⱼ
 end
 
 # Function to calculate kernel gradient value in both "particle i" format and "list of interactions" format
@@ -344,11 +320,5 @@ end
         xᵢⱼᶻ[iter] = Positionᶻ[i] - Positionᶻ[j]
     end
 end
-# Another implementation
-# function LimitDensityAtBoundary!(Density, BoundaryBool, ρ₀)
-#     # Element-wise operation to set Density values
-#     Density .= max.(Density, ρ₀ .* BoundaryBool)
-# end
-
 
 end
