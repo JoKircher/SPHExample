@@ -21,7 +21,8 @@ function ∑ⱼWᵢⱼ!(Kernel, KernelL, I, J, D, SimulationConstants)
     @unpack αD, h⁻¹ = SimulationConstants
     
     # Calculation
-    @tturbo for iter in eachindex(D) # TODO why here no clamp
+    # @tturbo 
+    for iter in eachindex(D) # TODO why here no clamp
         d = D[iter]
 
         q = d * h⁻¹ 
@@ -50,7 +51,8 @@ end
 function ∑ⱼ∇ᵢWᵢⱼ!(KernelGradientIˣ,KernelGradientIʸ,KernelGradientIᶻ,KernelGradientLˣ,KernelGradientLʸ,KernelGradientLᶻ, I, J, D, xᵢⱼˣ, xᵢⱼʸ, xᵢⱼᶻ, SimulationConstants)
     @unpack αD, h, h⁻¹, η² = SimulationConstants
  
-    @tturbo for iter in eachindex(I)
+    # @tturbo 
+    for iter in eachindex(I)
         i = I[iter]; j = J[iter]; d = D[iter]
 
         q = clamp(d * h⁻¹, 0.0, 2.0) # q = d/h between 0.0 and 2.0
@@ -93,7 +95,8 @@ end
 
 @inline @inbounds function Pressure!(Press, Density, SimulationConstants)
     @unpack c₀,γ,ρ₀ = SimulationConstants
-    @tturbo for i ∈ eachindex(Press,Density)
+    # @tturbo 
+    for i ∈ eachindex(Press,Density)
         Press[i] = EquationOfState(Density[i],c₀,γ,ρ₀)
     end
 end
@@ -116,7 +119,7 @@ end
 #https://discourse.julialang.org/t/can-this-be-written-even-faster-cpu/109924/28
 #faux(ρ₀, P, invCb, γ⁻¹) = ρ₀ * ( ^( 1 + (P * invCb), γ⁻¹) - 1)
 @inline faux(ρ₀, P, invCb, γ⁻¹) = ρ₀ * (expm1(γ⁻¹ * log1p(P * invCb)))
-@inline faux_fancy(ρ₀, P, Cb) = ρ₀ * ( fancy7th( 1 + (P * Cb)) - 1)
+@inline faux_fancy(ρ₀, P, Cb) = ρ₀ * ( fancy7th( 1 + (P * Cb)) - 1) # TODO fancy7th kann als eigene Funktion vorgegeben werden, krasser Speedup
 #faux(ρ₀, P, invCb) = ρ₀ * ( fancy7th( 1 + (P * invCb)) - 1)
 
 # The density derivative function INCLUDING density diffusion
@@ -129,11 +132,14 @@ function ∂ρᵢ∂tDDT!(dρdtI, list, xᵢⱼ,xᵢⱼʸ,ρ,v,KernelGradientL,M
     invCb = inv(Cb)
 
     # Follow the implementation here: https://arxiv.org/abs/2110.10076 S.6
-    @tturbo for iter in eachindex(list)
+    # @tturbo 
+    for iter in eachindex(list)
         Pᵢⱼᴴ  = ρ₀ * (-g) * -xᵢⱼʸ[iter]
-        ρᵢⱼᴴ  = faux_fancy(ρ₀, Pᵢⱼᴴ, invCb)
+        # ρᵢⱼᴴ  = faux_fancy(ρ₀, Pᵢⱼᴴ, invCb)
+        ρᵢⱼᴴ  = ρ₀ * ( ^( 1 + (Pᵢⱼᴴ * invCb), γ⁻¹) - 1)
         Pⱼᵢᴴ  = -Pᵢⱼᴴ
-        ρⱼᵢᴴ  = faux_fancy(ρ₀, Pⱼᵢᴴ, invCb)
+        # ρⱼᵢᴴ  = faux_fancy(ρ₀, Pⱼᵢᴴ, invCb)
+        ρⱼᵢᴴ  =  ρ₀ * ( ^( 1 + (Pⱼᵢᴴ * invCb), γ⁻¹) - 1)
         
         drhopLp[iter] = ρᵢⱼᴴ
         drhopLn[iter] = ρⱼᵢᴴ
@@ -158,23 +164,23 @@ function ∂ρᵢ∂tDDT!(dρdtI, list, xᵢⱼ,xᵢⱼʸ,ρ,v,KernelGradientL,M
         dρdtI[j] += FirstPartOfContinuity
         # Density diffusion
 
-        # # Implement for particle i # TODO Di als eingene Funktion für Studis
-        # # Pᵢⱼᴴ = ρ₀ * (-g) * xⱼᵢ[2]
-        # # ρᵢⱼᴴ = ρ₀ * ( ^( 1 + (Pᵢⱼᴴ/Cb), γ⁻¹) - 1)
-        # ρᵢⱼᴴ = drhopLp[iter] 
-        # Ψᵢⱼ  = 2 * (ρⱼᵢ - ρᵢⱼᴴ) * xⱼᵢ/(r²+η²)
-        # Dᵢ   = δᵩ * h * c₀ * (m₀/ρⱼ) * dot(Ψᵢⱼ,∇ᵢWᵢⱼ)
+        # Implement for particle i # TODO Di als eingene Funktion für Studis
+        # Pᵢⱼᴴ = ρ₀ * (-g) * xⱼᵢ[2]
+        # ρᵢⱼᴴ = ρ₀ * ( ^( 1 + (Pᵢⱼᴴ/Cb), γ⁻¹) - 1)
+        ρᵢⱼᴴ = drhopLp[iter] 
+        Ψᵢⱼ  = 2 * (ρⱼᵢ - ρᵢⱼᴴ) * xⱼᵢ/(r²+η²)
+        Dᵢ   = δᵩ * h * c₀ * (m₀/ρⱼ) * dot(Ψᵢⱼ,∇ᵢWᵢⱼ)
 
-        # dρdtI[i] += FirstPartOfContinuity + Dᵢ * MotionLimiter[i]
+        dρdtI[i] += FirstPartOfContinuity + Dᵢ * MotionLimiter[i]
 
-        # # Implement for particle j
-        # # Pⱼᵢᴴ = -Pᵢⱼᴴ
-        # # ρⱼᵢᴴ = ρ₀ * ( ^( 1 + (Pⱼᵢᴴ/Cb), γ⁻¹) - 1)
-        # ρⱼᵢᴴ = drhopLn[iter]
-        # Ψⱼᵢ  = 2 * (-ρⱼᵢ - ρⱼᵢᴴ) * (-xⱼᵢ)/(r²+η²)
-        # Dⱼ   = δᵩ * h * c₀ * (m₀/ρᵢ) * dot(Ψⱼᵢ,-∇ᵢWᵢⱼ)
+        # Implement for particle j
+        # Pⱼᵢᴴ = -Pᵢⱼᴴ
+        # ρⱼᵢᴴ = ρ₀ * ( ^( 1 + (Pⱼᵢᴴ/Cb), γ⁻¹) - 1)
+        ρⱼᵢᴴ = drhopLn[iter]
+        Ψⱼᵢ  = 2 * (-ρⱼᵢ - ρⱼᵢᴴ) * (-xⱼᵢ)/(r²+η²)
+        Dⱼ   = δᵩ * h * c₀ * (m₀/ρᵢ) * dot(Ψⱼᵢ,-∇ᵢWᵢⱼ)
 
-        # dρdtI[j] += FirstPartOfContinuity + Dⱼ * MotionLimiter[i]
+        dρdtI[j] += FirstPartOfContinuity + Dⱼ * MotionLimiter[i]
     end
 
     return nothing
@@ -185,7 +191,8 @@ function ∂vᵢ∂t!(I,J, dvdtIˣ, dvdtIʸ, dvdtIᶻ, dvdtLˣ, dvdtLʸ, dvdtL�
     @unpack m₀, c₀,γ,ρ₀ = SimulationConstants
 
     # Calculation
-    @tturbo for iter in eachindex(I)
+    # @tturbo 
+    for iter in eachindex(I)
         i = I[iter]; j = J[iter];
 
         ρᵢ    = Density[i]
@@ -233,7 +240,8 @@ function ∂Πᵢⱼ∂t!(viscIˣ, viscIʸ, viscIᶻ, viscLˣ, viscLʸ, viscLᶻ
     @unpack h, α, c₀, m₀, η² = SimulationConstants
 
     # Calculation
-    @tturbo for iter in eachindex(I)
+    # @tturbo 
+    for iter in eachindex(I)
         i = I[iter]; j = J[iter]; d = D[iter]
         
         ρᵢ    = Density[i]
@@ -312,7 +320,8 @@ function LimitDensityAtBoundary!(Density,BoundaryBool,ρ₀)
 end
 
 @inline @inbounds function updatexᵢⱼ!(xᵢⱼˣ, xᵢⱼʸ, xᵢⱼᶻ, I, J, Positionˣ, Positionʸ, Positionᶻ)
-    @tturbo for iter ∈ eachindex(I,J)
+    # @tturbo 
+    for iter ∈ eachindex(I,J)
         i = I[iter]; j = J[iter]; 
         
         xᵢⱼˣ[iter] = Positionˣ[i] - Positionˣ[j]
