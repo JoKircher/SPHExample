@@ -95,7 +95,7 @@ function RunSimulation(;FluidCSV::String,
 
     dvdtIˣ            = zeros(FloatType,  SizeOfParticlesI1)
     dvdtIʸ            = zeros(FloatType,  SizeOfParticlesI1)
-    dvdtIᶻ            = zeros(FloatType,  SizeOfParticlesI1)
+    dvdtIᶻ            = zeros(FloatType,  SizeOfParticlesI1) # TODO Eliminate Z coordiante if possible
     dvdtI             = StructArray{TypeOfParticleI3}(( dvdtIˣ, dvdtIʸ, dvdtIᶻ)) # TODO what this
 
     dvdtLˣ            = zeros(FloatType,  SizeOfParticlesI1)
