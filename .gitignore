@@ -5,6 +5,7 @@ particles/
 # Ignores .vtp files
 *.vtp
 second_approach/
+results/
 # Ignores manifest.toml
 Manifest.toml
 # Ignore log files
