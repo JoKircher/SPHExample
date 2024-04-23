@@ -13,6 +13,7 @@ using Base.Threads
 
 # Really important to overload default function, gives 10x speed up?
 # Overload the default function to do what you please
+# TODO Per particle/per Interaction
 function ComputeInteractions!(SimMetaData, SimConstants, Position, KernelThreaded, KernelGradientThreaded, Density, Pressure, Velocity, dρdtI, dvdtI, i, j, MotionLimiter, ichunk)
     @unpack FlagViscosityTreatment, FlagDensityDiffusion, FlagOutputKernelValues = SimMetaData
     @unpack ρ₀, h, h⁻¹, m₀, αD, α, g, c₀, δᵩ, η², H², Cb⁻¹, ν₀, dx, SmagorinskyConstant, BlinConstant = SimConstants
@@ -319,10 +320,11 @@ let
 
     SimMetaDataDamBreak  = SimulationMetaData{Dimensions,FloatType}(
         SimulationName="Test", 
-        SaveLocation="E:/SecondApproach/TESTING_CPU",
+        SaveLocation="C:/Users/kirchejo/Repos/SPHExample/results/v0.5_full/",
         SimulationTime=2,
         OutputEach=0.01,
         FlagDensityDiffusion=true,
+        FlagViscosityTreatment = :ArtificialViscosity,
         FlagOutputKernelValues=false,
         FlagLog=true
     )
