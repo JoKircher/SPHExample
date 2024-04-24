@@ -16,7 +16,7 @@ using Base.Threads
 # TODO Per particle/per Interaction
 function ComputeInteractions!(SimMetaData, SimConstants, Position, KernelThreaded, KernelGradientThreaded, Density, Pressure, Velocity, dρdtI, dvdtI, i, j, MotionLimiter, ichunk)
     @unpack FlagViscosityTreatment, FlagDensityDiffusion, FlagOutputKernelValues = SimMetaData
-    @unpack ρ₀, h, h⁻¹, m₀, αD, α, g, c₀, δᵩ, η², H², Cb⁻¹, ν₀, dx, SmagorinskyConstant, BlinConstant = SimConstants
+    @unpack ρ₀, h, h⁻¹, m₀, αD, α, g, c₀, δᵩ, η², H², Cb⁻¹, ν₀, dx = SimConstants
 
     xᵢⱼ  = Position[i] - Position[j]
     xᵢⱼ² = dot(xᵢⱼ,xᵢⱼ)              
@@ -39,6 +39,7 @@ function ComputeInteractions!(SimMetaData, SimConstants, Position, KernelThreade
 
         # Density diffusion
         if FlagDensityDiffusion
+            # Dᵢ, Dⱼ = diff(ρ₀, g, -xᵢⱼ, Cb⁻¹, ρᵢ, ρⱼ, dᵢⱼ, η², δᵩ, h, c₀, m₀, ∇ᵢWᵢⱼ) # TODO what does MotionLimiter do
             Pᵢⱼᴴ  = ρ₀ * (-g) * -xᵢⱼ[end]
             ρᵢⱼᴴ  = InverseHydrostaticEquationOfState(ρ₀, Pᵢⱼᴴ, Cb⁻¹)
             Pⱼᵢᴴ  = -Pᵢⱼᴴ
@@ -52,6 +53,9 @@ function ComputeInteractions!(SimMetaData, SimConstants, Position, KernelThreade
             MLcond = MotionLimiter[i] * MotionLimiter[j]
             Dᵢ    =  δᵩ * h * c₀ * (m₀/ρⱼ) * dot(Ψᵢⱼ ,  ∇ᵢWᵢⱼ) * MLcond
             Dⱼ    =  δᵩ * h * c₀ * (m₀/ρᵢ) * dot(Ψⱼᵢ , -∇ᵢWᵢⱼ) * MLcond
+            # Dᵢ *= MLcond
+            # Dⱼ *= MLcond
+            
         else
             Dᵢ  = 0.0
             Dⱼ  = 0.0
@@ -67,62 +71,21 @@ function ComputeInteractions!(SimMetaData, SimConstants, Position, KernelThreade
         dvdt⁻   = - dvdt⁺
 
         if FlagViscosityTreatment == :ArtificialViscosity
-            Πᵢ,Πⱼ = visco(ρᵢ, ρⱼ, vᵢⱼ, xᵢⱼ, invd²η², α, c₀, ∇ᵢWᵢⱼ, h, m₀)
-            # ρ̄ᵢⱼ       = (ρᵢ+ρⱼ)*0.5
-            # cond      = dot(vᵢⱼ, xᵢⱼ)
-            # cond_bool = cond < 0.0
-            # μᵢⱼ       = h*cond * invd²η²
-            # Πᵢ        = - m₀ * (cond_bool*(-α*c₀*μᵢⱼ)/ρ̄ᵢⱼ) * ∇ᵢWᵢⱼ
-            # Πⱼ        = - Πᵢ
+            # Πᵢ,Πⱼ = visco(ρᵢ, ρⱼ, vᵢⱼ, xᵢⱼ, invd²η², α, c₀, ∇ᵢWᵢⱼ, h, m₀)
+            ρ̄ᵢⱼ       = (ρᵢ+ρⱼ)*0.5
+            cond      = dot(vᵢⱼ, xᵢⱼ)
+            cond_bool = cond < 0.0
+            μᵢⱼ       = h*cond * invd²η²
+            Πᵢ        = - m₀ * (cond_bool*(-α*c₀*μᵢⱼ)/ρ̄ᵢⱼ) * ∇ᵢWᵢⱼ
+            Πⱼ        = - Πᵢ
         else
             Πᵢ        = zero(xᵢⱼ)
             Πⱼ        = Πᵢ
         end
+
     
-        if FlagViscosityTreatment == :Laminar || FlagViscosityTreatment == :LaminarSPS
-            # 4 comes from 2 divided by 0.5 from average density
-            # should divide by ρᵢ eq 6 DPC
-            # ν₀∇²uᵢ = (1/ρᵢ) * ( (4 * m₀ * (ρᵢ * ν₀) * dot( xᵢⱼ, ∇ᵢWᵢⱼ)  ) / ( (ρᵢ + ρⱼ) + (dᵢⱼ * dᵢⱼ + η²) ) ) *  vᵢⱼ
-            # ν₀∇²uⱼ = (1/ρⱼ) * ( (4 * m₀ * (ρⱼ * ν₀) * dot(-xᵢⱼ,-∇ᵢWᵢⱼ)  ) / ( (ρᵢ + ρⱼ) + (dᵢⱼ * dᵢⱼ + η²) ) ) * -vᵢⱼ
-            visc_symmetric_term = (4 * m₀ * ν₀ * dot( xᵢⱼ, ∇ᵢWᵢⱼ)) / ((ρᵢ + ρⱼ) + (dᵢⱼ * dᵢⱼ + η²))
-            # ν₀∇²uᵢ = (1/ρᵢ) * visc_symmetric_term *  vᵢⱼ * ρᵢ
-            # ν₀∇²uⱼ = (1/ρⱼ) * visc_symmetric_term * -vᵢⱼ * ρⱼ
-            ν₀∇²uᵢ =  visc_symmetric_term *  vᵢⱼ
-            ν₀∇²uⱼ = -ν₀∇²uᵢ #visc_symmetric_term * -vᵢⱼ
-        else
-            ν₀∇²uᵢ = zero(xᵢⱼ)
-            ν₀∇²uⱼ = ν₀∇²uᵢ
-        end
-    
-        if FlagViscosityTreatment == :LaminarSPS 
-            Iᴹ       = diagm(one.(xᵢⱼ))
-            #julia> a .- a'
-            # 3×3 SMatrix{3, 3, Float64, 9} with indices SOneTo(3)×SOneTo(3):
-            # 0.0  0.0  0.0
-            # 0.0  0.0  0.0
-            # 0.0  0.0  0.0
-            # Strain *rate* tensor is the gradient of velocity
-            Sᵢ = ∇vᵢ =  (m₀/ρⱼ) * (vⱼ - vᵢ) * ∇ᵢWᵢⱼ'
-            norm_Sᵢ  = sqrt(2 * sum(Sᵢ .^ 2))
-            νtᵢ      = (SmagorinskyConstant * dx)^2 * norm_Sᵢ
-            trace_Sᵢ = sum(diag(Sᵢ))
-            τᶿᵢ      = 2*νtᵢ*ρᵢ * (Sᵢ - (1/3) * trace_Sᵢ * Iᴹ) - (2/3) * ρᵢ * BlinConstant * dx^2 * norm_Sᵢ^2 * Iᴹ
-            Sⱼ = ∇vⱼ =  (m₀/ρᵢ) * (vᵢ - vⱼ) * -∇ᵢWᵢⱼ'
-            norm_Sⱼ  = sqrt(2 * sum(Sⱼ .^ 2))
-            νtⱼ      = (SmagorinskyConstant * dx)^2 * norm_Sⱼ
-            trace_Sⱼ = sum(diag(Sⱼ))
-            τᶿⱼ      = 2*νtⱼ*ρⱼ * (Sⱼ - (1/3) * trace_Sⱼ * Iᴹ) - (2/3) * ρⱼ * BlinConstant * dx^2 * norm_Sⱼ^2 * Iᴹ
-    
-            # MATHEMATICALLY THIS IS DOT PRODUCT TO GO FROM TENSOR TO VECTOR, BUT USE * IN JULIA TO REPRESENT IT
-            dτdtᵢ = (m₀/(ρⱼ * ρᵢ)) * (τᶿᵢ + τᶿⱼ) *  ∇ᵢWᵢⱼ 
-            dτdtⱼ = (m₀/(ρᵢ * ρⱼ)) * (τᶿᵢ + τᶿⱼ) * -∇ᵢWᵢⱼ 
-        else
-            dτdtᵢ  = zero(xᵢⱼ)
-            dτdtⱼ  = dτdtᵢ
-        end
-    
-        dvdtI[ichunk][i] += dvdt⁺ + Πᵢ + ν₀∇²uᵢ + dτdtᵢ
-        dvdtI[ichunk][j] += dvdt⁻ + Πⱼ + ν₀∇²uⱼ + dτdtⱼ
+        dvdtI[ichunk][i] += dvdt⁺ + Πᵢ
+        dvdtI[ichunk][j] += dvdt⁻ + Πⱼ
 
         if FlagOutputKernelValues
             Wᵢⱼ  = @fastpow αD*(1-q/2)^4*(2*q + 1)
