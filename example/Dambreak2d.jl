@@ -11,9 +11,32 @@ using Logging, LoggingExtras
 using HDF5
 using Base.Threads
 
-# Really important to overload default function, gives 10x speed up?
-# Overload the default function to do what you please
-# TODO Per particle/per Interaction
+"""
+    function ComputeInteractions!(SimMetaData, SimConstants, Position, KernelThreaded, KernelGradientThreaded, Density, Pressure, Velocity, dρdtI, dvdtI, i, j, MotionLimiter, ichunk)
+
+Function to process each interaction
+
+# Parameters
+- `SimMetaData`: Simulation Meta data.
+- `SimConstants`: Simulation constants.
+- `Position`: Particle postions.
+- `KernelThreaded`: Threaded Kernel values.
+- `KernelGradientThreaded`: Threaded Kernel gradient values.
+- `Density`: Particle densities.
+- `Pressure`: Particle pressures.
+- `Velocity`: Particle Velocities.
+- `dρdtI`: Density derivative values.
+- `dvdtI`: Velocity derivative values.
+- `i`: Index of particle `i`
+- `j`: Index of particle `j`
+- `MotionLimiter`: Identifies Boundary and fluid particles.
+- `ichunk`: Thread chunks, part allocated to each thread.
+
+# Example
+```julia
+ComputeInteractions!(SimMetaData, SimConstants, Position, Kernel, KernelGradient, Density, Pressure, Velocity, dρdtI, dvdtI, i, j, MotionLimiter, ichunk)
+```
+"""
 function ComputeInteractions!(SimMetaData, SimConstants, Position, KernelThreaded, KernelGradientThreaded, Density, Pressure, Velocity, dρdtI, dvdtI, i, j, MotionLimiter, ichunk)
     @unpack FlagViscosityTreatment, FlagDensityDiffusion, FlagOutputKernelValues = SimMetaData
     @unpack ρ₀, h, h⁻¹, m₀, αD, α, g, c₀, δᵩ, η², H², Cb⁻¹, ν₀, dx = SimConstants
@@ -39,22 +62,24 @@ function ComputeInteractions!(SimMetaData, SimConstants, Position, KernelThreade
 
         # Density diffusion
         if FlagDensityDiffusion
-            # Dᵢ, Dⱼ = diff(ρ₀, g, -xᵢⱼ, Cb⁻¹, ρᵢ, ρⱼ, dᵢⱼ, η², δᵩ, h, c₀, m₀, ∇ᵢWᵢⱼ) # TODO what does MotionLimiter do
-            Pᵢⱼᴴ  = ρ₀ * (-g) * -xᵢⱼ[end]
-            ρᵢⱼᴴ  = InverseHydrostaticEquationOfState(ρ₀, Pᵢⱼᴴ, Cb⁻¹)
-            Pⱼᵢᴴ  = -Pᵢⱼᴴ
-            ρⱼᵢᴴ  = InverseHydrostaticEquationOfState(ρ₀, Pⱼᵢᴴ, Cb⁻¹)
-
-            ρⱼᵢ   = ρⱼ - ρᵢ
-
-            Ψᵢⱼ   = 2( ρⱼᵢ  - ρᵢⱼᴴ) * (-xᵢⱼ)/(dᵢⱼ^2 + η²)
-            Ψⱼᵢ   = 2(-ρⱼᵢ  - ρⱼᵢᴴ) * ( xᵢⱼ)/(dᵢⱼ^2 + η²) 
-
             MLcond = MotionLimiter[i] * MotionLimiter[j]
-            Dᵢ    =  δᵩ * h * c₀ * (m₀/ρⱼ) * dot(Ψᵢⱼ ,  ∇ᵢWᵢⱼ) * MLcond
-            Dⱼ    =  δᵩ * h * c₀ * (m₀/ρᵢ) * dot(Ψⱼᵢ , -∇ᵢWᵢⱼ) * MLcond
-            # Dᵢ *= MLcond
-            # Dⱼ *= MLcond
+            Dᵢ, Dⱼ = diffusions(ρ₀, g, xᵢⱼ, Cb⁻¹, ρᵢ, ρⱼ, dᵢⱼ, η², δᵩ, h, c₀, m₀, ∇ᵢWᵢⱼ) # TODO what does MotionLimiter do
+            Dᵢ *= MLcond
+            Dⱼ *= MLcond
+            # Pᵢⱼᴴ  = ρ₀ * (-g) * -xᵢⱼ[end]
+            # ρᵢⱼᴴ  = InverseHydrostaticEquationOfState(ρ₀, Pᵢⱼᴴ, Cb⁻¹)
+            # Pⱼᵢᴴ  = -Pᵢⱼᴴ
+            # ρⱼᵢᴴ  = InverseHydrostaticEquationOfState(ρ₀, Pⱼᵢᴴ, Cb⁻¹)
+
+            # ρⱼᵢ   = ρⱼ - ρᵢ
+
+            # Ψᵢⱼ   = 2( ρⱼᵢ  - ρᵢⱼᴴ) * (-xᵢⱼ)/(dᵢⱼ^2 + η²)
+            # Ψⱼᵢ   = 2(-ρⱼᵢ  - ρⱼᵢᴴ) * ( xᵢⱼ)/(dᵢⱼ^2 + η²) 
+
+            # MLcond = MotionLimiter[i] * MotionLimiter[j]
+            # Dᵢ    =  δᵩ * h * c₀ * (m₀/ρⱼ) * dot(Ψᵢⱼ ,  ∇ᵢWᵢⱼ) * MLcond
+            # Dⱼ    =  δᵩ * h * c₀ * (m₀/ρᵢ) * dot(Ψⱼᵢ , -∇ᵢWᵢⱼ) * MLcond
+            # Dⱼ = -Dᵢ
             
         else
             Dᵢ  = 0.0
@@ -71,13 +96,13 @@ function ComputeInteractions!(SimMetaData, SimConstants, Position, KernelThreade
         dvdt⁻   = - dvdt⁺
 
         if FlagViscosityTreatment == :ArtificialViscosity
-            # Πᵢ,Πⱼ = visco(ρᵢ, ρⱼ, vᵢⱼ, xᵢⱼ, invd²η², α, c₀, ∇ᵢWᵢⱼ, h, m₀)
-            ρ̄ᵢⱼ       = (ρᵢ+ρⱼ)*0.5
-            cond      = dot(vᵢⱼ, xᵢⱼ)
-            cond_bool = cond < 0.0
-            μᵢⱼ       = h*cond * invd²η²
-            Πᵢ        = - m₀ * (cond_bool*(-α*c₀*μᵢⱼ)/ρ̄ᵢⱼ) * ∇ᵢWᵢⱼ
-            Πⱼ        = - Πᵢ
+            Πᵢ,Πⱼ = visco(ρᵢ, ρⱼ, vᵢⱼ, xᵢⱼ, invd²η², α, c₀, ∇ᵢWᵢⱼ, h, m₀)
+            # ρ̄ᵢⱼ       = (ρᵢ+ρⱼ)*0.5
+            # cond      = dot(vᵢⱼ, xᵢⱼ)
+            # cond_bool = cond < 0.0
+            # μᵢⱼ       = h*cond * invd²η²
+            # Πᵢ        = - m₀ * (cond_bool*(-α*c₀*μᵢⱼ)/ρ̄ᵢⱼ) * ∇ᵢWᵢⱼ
+            # Πⱼ        = - Πᵢ
         else
             Πᵢ        = zero(xᵢⱼ)
             Πⱼ        = Πᵢ
@@ -99,12 +124,58 @@ function ComputeInteractions!(SimMetaData, SimConstants, Position, KernelThreade
     return nothing
 end
 
-# Reduce threaded arrays
+"""
+    function reduce_sum!(target_array, arrays)
+
+Reduce threaded arrays
+
+# Parameters
+- `target_array`: array where data should be reduced to.
+- `arrays`: array with unreduced data.
+
+# Example
+```julia
+reduce_sum!(dρdtI, dρdtIThreaded)
+```
+"""
 @inline function reduce_sum!(target_array, arrays)
     for array in arrays
         target_array .+= array
     end
 end
+
+"""
+    function SimulationLoop(ComputeInteractions!, SimMetaData, SimConstants, SimParticles, Stencil,  ParticleRanges, UniqueCells, SortingScratchSpace, Kernel, KernelThreaded, KernelGradient, KernelGradientThreaded, dρdtI, dρdtIThreaded, AccelerationThreaded, Velocityₙ⁺, Positionₙ⁺, ρₙ⁺, InverseCutOff)
+
+Function to control the simulation loop
+
+# Parameters
+- `ComputeInteractions!`: Function to process interactions.
+- `SimMetaData`: Simulation Meta data.
+- `SimConstants`: Simulation constants.
+- `SimParticles`: Particles in the simulation.
+- `Stencil`: Kernel stencil.
+- `ParticleRanges`: range of possible particles in neighborhood.
+- `UniqueCells`: Identify closeby cells.
+- `SortingScratchSpace`: Sorting algorithm.
+- `Kernel`: Kernel values.
+- `KernelThreaded`: Threaded Kernel values.
+- `KernelGradient`: Kernel gradient values.
+- `KernelGradientThreaded`: Threaded Kernel gradient values.
+- `dρdtI`: Density derivative values.
+- `dρdtIThreaded`: Threaded Density derivative values.
+- `AccelerationThreaded`: Threaded Acceleration values.
+- `Velocityₙ⁺`: Half step Velocities.
+- `Positionₙ⁺`: Half step Positions.
+- `ρₙ⁺`: Half step densities.
+- `InverseCutOff`: Multiplicative inverse of CutOff distance.
+
+# Example
+```julia
+SimulationLoop(ComputeInteractions!, SimMetaData, SimConstants, SimParticles, Stencil, ParticleRanges, UniqueCells, SortingScratchSpace, Kernel, KernelThreaded, KernelGradient, KernelGradientThreaded, dρdtI, dρdtIThreaded, AccelerationThreaded, Velocityₙ⁺, Positionₙ⁺, ρₙ⁺, InverseCutOff)
+```
+"""
+
 @inbounds function SimulationLoop(ComputeInteractions!, SimMetaData, SimConstants, SimParticles, Stencil,  ParticleRanges, UniqueCells, SortingScratchSpace, Kernel, KernelThreaded, KernelGradient, KernelGradientThreaded, dρdtI, dρdtIThreaded, AccelerationThreaded, Velocityₙ⁺, Positionₙ⁺, ρₙ⁺, InverseCutOff)
     Position      = SimParticles.Position
     Density       = SimParticles.Density
@@ -169,7 +240,34 @@ end
     return nothing
 end
 
-###===
+"""
+    function RunSimulation(;FluidCSV::String,
+        BoundCSV::String,
+        SimMetaData::SimulationMetaData{Dimensions, FloatType},
+        SimConstants::SimulationConstants,
+        SimLogger::SimulationLogger
+        ) where {Dimensions,FloatType}
+
+Function to process each cell and its neighbors
+
+# Parameters
+- `FluidCSV::String`: Location of fluid particle .csv file.
+- `BoundCSV::String`: Location of boundary particle .csv file.
+- `SimMetaData::SimulationMetaData{Dimensions, FloatType}`: Simulation meta data.
+- `SimConstants::SimulationConstants`: Simulation constants.
+- `SimLogger::SimulationLogger`: Simulation logger.
+
+# Example
+```julia
+RunSimulation(
+    FluidCSV           = "./input/dam_break_2d/DamBreak2d_Dp0.02_Fluid_OneLayer.csv",
+    BoundCSV           = "./input/dam_break_2d/DamBreak2d_Dp0.02_Bound_ThreeLayers.csv",
+    SimMetaData        = SimMetaDataDamBreak,
+    SimConstants       = SimConstantsDamBreak,
+    SimLogger          = SimLogger
+)
+```
+"""
 function RunSimulation(;FluidCSV::String,
     BoundCSV::String,
     SimMetaData::SimulationMetaData{Dimensions, FloatType},

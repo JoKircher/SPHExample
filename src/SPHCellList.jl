@@ -8,6 +8,21 @@ import LinearAlgebra: dot
 using ..SimulationEquations
 using ..AuxillaryFunctions
 
+    """
+        function ConstructStencil(v::Val{d}) where d
+
+    Construction of the stencil of the kernel shape
+
+    # Parameters
+    - `SimLogger`: Logger that handles the output of the logger file.
+    - `SimMetaData`: Simulation Meta data
+    - `HourGlass`: Keeps track of execution time.
+
+    # Example
+    ```julia
+    Stencil                = ConstructStencil(Val(Dimensions))
+    ```
+    """
     function ConstructStencil(v::Val{d}) where d
         n_ = CartesianIndices(ntuple(_->-1:1,v))
         half_length = length(n_) ÷ 2
@@ -16,6 +31,20 @@ using ..AuxillaryFunctions
         return n
     end
 
+    """
+        function ExtractCells!(Particles, ::Val{InverseCutOff}) where InverseCutOff
+
+    Construction of the grid containing possible neigbors
+
+    # Parameters
+    - `Particles`: particles in the simulation.
+    - `::Val{InverseCutOff}`: Cutoff distance of kernel.
+
+    # Example
+    ```julia
+    ExtractCells!(Particles, CutOff)
+    ```
+    """
     @inline function ExtractCells!(Particles, ::Val{InverseCutOff}) where InverseCutOff
         # Replace unsafe_trunc with trunc if this ever errors
         function map_floor(x)
@@ -31,7 +60,23 @@ using ..AuxillaryFunctions
         return nothing
     end
 
-    ###=== Function to update ordering
+    """
+        function UpdateNeighbors!(Particles, CutOff, SortingScratchSpace, ParticleRanges, UniqueCells)
+
+    Update the neigborhood of the particles
+
+    # Parameters
+    - `Particles`: particles in the simulation.
+    - `CutOff`: Cutoff distance of kernel.
+    - `SortingScratchSpace`: Sorting algorithm.
+    - `ParticleRanges`: range of possible particles in neighborhood
+    - `UniqueCells`: Identify closeby cells.
+
+    # Example
+    ```julia
+    IndexCounter = UpdateNeighbors!(SimParticles, InverseCutOff, SortingScratchSpace,  ParticleRanges, UniqueCells)
+    ```
+    """
     function UpdateNeighbors!(Particles, CutOff, SortingScratchSpace, ParticleRanges, UniqueCells)
         ExtractCells!(Particles, CutOff)
 
@@ -55,8 +100,34 @@ using ..AuxillaryFunctions
         return IndexCounter 
     end
 
-# Neither Polyester.@batch per core or thread is faster
-###=== Function to process each cell and its neighbors
+    """
+        function NeighborLoop!(ComputeInteractions!, SimMetaData, SimConstants, ParticleRanges, Stencil, Position, Kernel, KernelGradient, Density, Pressure, Velocity, dρdtI, dvdtI,  MotionLimiter, UniqueCells, IndexCounter)
+
+            Function to process each cell and its neighbors
+
+    # Parameters
+    - `ComputeInteractions!`: Function to process interactions.
+    - `SimMetaData`: Simulation Meta data.
+    - `SimConstants`: Simulation constants.
+    - `ParticleRanges`: range of possible particles in neighborhood
+    - `Stencil`: Kernel stencil.
+    - `Position`: Particle postions.
+    - `Kernel`: Kernel values.
+    - `KernelGradient`: Kernel gradient values.
+    - `Density`: Particle densities.
+    - `Pressure`: Particle pressures.
+    - `Velocity`: Particle Velocities.
+    - `dρdtI`: Density derivative values.
+    - `dvdtI`: Velocity derivative values.
+    - `MotionLimiter`: Identifies Boundary and fluid particles.
+    - `UniqueCells`: Identify closeby cells.
+    - `IndexCounter`: List of possible neigbors.
+
+    # Example
+    ```julia
+    NeighborLoop!(ComputeInteractions!, SimMetaData, SimConstants, ParticleRanges, Stencil, Position, KernelThreaded, KernelGradientThreaded, Density, Pressure, Velocity, dρdtIThreaded, AccelerationThreaded,  MotionLimiter, UniqueCells, IndexCounter)
+    ```
+    """
     function NeighborLoop!(ComputeInteractions!, SimMetaData, SimConstants, ParticleRanges, Stencil, Position, Kernel, KernelGradient, Density, Pressure, Velocity, dρdtI, dvdtI,  MotionLimiter, UniqueCells, IndexCounter)
         UniqueCells = view(UniqueCells, 1:IndexCounter)
         @threads for (ichunk, inds) in enumerate(chunks(UniqueCells; n=nthreads()))

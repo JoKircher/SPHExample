@@ -8,7 +8,7 @@ function visco(ρᵢ, ρⱼ, vᵢⱼ, xᵢⱼ, invd²η², α, c₀, ∇ᵢWᵢ�
     return Πᵢ, Πⱼ
 end
 
-function diff(ρ₀, g, xᵢⱼ, Cb⁻¹, ρᵢ, ρⱼ, dᵢⱼ, η², δᵩ, h, c₀, m₀, ∇ᵢWᵢⱼ)
+function diffusions(ρ₀, g, xᵢⱼ, Cb⁻¹, ρᵢ, ρⱼ, dᵢⱼ, η², δᵩ, h, c₀, m₀, ∇ᵢWᵢⱼ)
     Pᵢⱼᴴ  = ρ₀ * (-g) * -xᵢⱼ[end]
     ρᵢⱼᴴ  = InverseHydrostaticEquationOfState(ρ₀, Pᵢⱼᴴ, Cb⁻¹)
     Pⱼᵢᴴ  = -Pᵢⱼᴴ
@@ -26,7 +26,6 @@ function diff(ρ₀, g, xᵢⱼ, Cb⁻¹, ρᵢ, ρⱼ, dᵢⱼ, η², δᵩ, h,
 end
 
 include("../example/Dambreak2d.jl")
-
 
 let
     Dimensions = 2
