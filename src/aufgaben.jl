@@ -37,7 +37,7 @@ let
         SimulationTime=2,
         OutputEach=0.01,
         FlagDensityDiffusion=true,
-        FlagViscosityTreatment = false,
+        FlagViscosityTreatment = true,
         FlagOutputKernelValues=false,
         FlagLog=true
     )

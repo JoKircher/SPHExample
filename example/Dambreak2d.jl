@@ -62,29 +62,26 @@ function ComputeInteractions!(SimMetaData, SimConstants, Position, KernelThreade
 
         # Density diffusion
         if FlagDensityDiffusion
-            MLcond = MotionLimiter[i] * MotionLimiter[j]
-            Dᵢ, Dⱼ = diffusions(ρ₀, g, xᵢⱼ, Cb⁻¹, ρᵢ, ρⱼ, dᵢⱼ, η², δᵩ, h, c₀, m₀, ∇ᵢWᵢⱼ) # TODO what does MotionLimiter do
-            Dᵢ *= MLcond
-            Dⱼ *= MLcond
-            # Pᵢⱼᴴ  = ρ₀ * (-g) * -xᵢⱼ[end]
-            # ρᵢⱼᴴ  = InverseHydrostaticEquationOfState(ρ₀, Pᵢⱼᴴ, Cb⁻¹)
-            # Pⱼᵢᴴ  = -Pᵢⱼᴴ
-            # ρⱼᵢᴴ  = InverseHydrostaticEquationOfState(ρ₀, Pⱼᵢᴴ, Cb⁻¹)
-
-            # ρⱼᵢ   = ρⱼ - ρᵢ
-
-            # Ψᵢⱼ   = 2( ρⱼᵢ  - ρᵢⱼᴴ) * (-xᵢⱼ)/(dᵢⱼ^2 + η²)
-            # Ψⱼᵢ   = 2(-ρⱼᵢ  - ρⱼᵢᴴ) * ( xᵢⱼ)/(dᵢⱼ^2 + η²) 
-
             # MLcond = MotionLimiter[i] * MotionLimiter[j]
-            # Dᵢ    =  δᵩ * h * c₀ * (m₀/ρⱼ) * dot(Ψᵢⱼ ,  ∇ᵢWᵢⱼ) * MLcond
-            # Dⱼ    =  δᵩ * h * c₀ * (m₀/ρᵢ) * dot(Ψⱼᵢ , -∇ᵢWᵢⱼ) * MLcond
-            # Dⱼ = -Dᵢ
-            
+            # Dᵢ, Dⱼ = diffusions(ρ₀, g, xᵢⱼ, Cb⁻¹, ρᵢ, ρⱼ, dᵢⱼ, η², δᵩ, h, c₀, m₀, ∇ᵢWᵢⱼ) # TODO what does MotionLimiter do
+            Pᵢⱼᴴ  = ρ₀ * (-g) * -xᵢⱼ[end]
+            ρᵢⱼᴴ  = InverseHydrostaticEquationOfState(ρ₀, Pᵢⱼᴴ, Cb⁻¹)
+            Pⱼᵢᴴ  = -Pᵢⱼᴴ
+            ρⱼᵢᴴ  = InverseHydrostaticEquationOfState(ρ₀, Pⱼᵢᴴ, Cb⁻¹)
+
+            ρⱼᵢ   = ρⱼ - ρᵢ
+
+            Ψᵢⱼ   = 2( ρⱼᵢ  - ρᵢⱼᴴ) * (-xᵢⱼ)/(dᵢⱼ^2 + η²)
+            Ψⱼᵢ   = 2(-ρⱼᵢ  - ρⱼᵢᴴ) * ( xᵢⱼ)/(dᵢⱼ^2 + η²) 
+
+            MLcond = MotionLimiter[i] * MotionLimiter[j]
+            Dᵢ    =  δᵩ * h * c₀ * (m₀/ρⱼ) * dot(Ψᵢⱼ ,  ∇ᵢWᵢⱼ) * MLcond
+            Dⱼ    =  δᵩ * h * c₀ * (m₀/ρᵢ) * dot(Ψⱼᵢ , -∇ᵢWᵢⱼ) * MLcond         
         else
             Dᵢ  = 0.0
             Dⱼ  = 0.0
         end
+        
         dρdtI[ichunk][i] += dρdt⁺ + Dᵢ
         dρdtI[ichunk][j] += dρdt⁻ + Dⱼ
 
@@ -96,13 +93,13 @@ function ComputeInteractions!(SimMetaData, SimConstants, Position, KernelThreade
         dvdt⁻   = - dvdt⁺
 
         if FlagViscosityTreatment == :ArtificialViscosity
-            Πᵢ,Πⱼ = visco(ρᵢ, ρⱼ, vᵢⱼ, xᵢⱼ, invd²η², α, c₀, ∇ᵢWᵢⱼ, h, m₀)
-            # ρ̄ᵢⱼ       = (ρᵢ+ρⱼ)*0.5
-            # cond      = dot(vᵢⱼ, xᵢⱼ)
-            # cond_bool = cond < 0.0
-            # μᵢⱼ       = h*cond * invd²η²
-            # Πᵢ        = - m₀ * (cond_bool*(-α*c₀*μᵢⱼ)/ρ̄ᵢⱼ) * ∇ᵢWᵢⱼ
-            # Πⱼ        = - Πᵢ
+            # Πᵢ,Πⱼ = visco(ρᵢ, ρⱼ, vᵢⱼ, xᵢⱼ, invd²η², α, c₀, ∇ᵢWᵢⱼ, h, m₀)
+            ρ̄ᵢⱼ       = (ρᵢ+ρⱼ)*0.5
+            cond      = dot(vᵢⱼ, xᵢⱼ)
+            cond_bool = cond < 0.0
+            μᵢⱼ       = h*cond * invd²η²
+            Πᵢ        = - m₀ * (cond_bool*(-α*c₀*μᵢⱼ)/ρ̄ᵢⱼ) * ∇ᵢWᵢⱼ
+            Πⱼ        = - Πᵢ
         else
             Πᵢ        = zero(xᵢⱼ)
             Πⱼ        = Πᵢ
