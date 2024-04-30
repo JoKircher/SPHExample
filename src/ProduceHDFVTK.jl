@@ -25,6 +25,7 @@ module ProduceHDFVTK
     SaveVTKHDF(fid_vector, Index, SaveLocation(Index),to_3d(SimParticles.Position),["Kernel", "KernelGradient", "Density", "Pressure","Velocity", "Acceleration", "BoundaryBool" , "ID"], Kernel, KernelGradient, SimParticles.Density, SimParticles.Pressure, SimParticles.Velocity, SimParticles.Acceleration, Int.(SimParticles.BoundaryBool), SimParticles.ID)
     ```
     """
+    
     function SaveVTKHDF(fid_vector, index, filepath,points, variable_names, args...)
         @assert length(variable_names) == length(args) "Same number of variable_names as args is necessary"
             io = h5open(filepath, "w")

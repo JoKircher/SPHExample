@@ -60,6 +60,7 @@ module SimulationLoggerConfiguration
     SimLogger = SimulationLogger(SimMetaDataDamBreak.SaveLocation)
     ```
     """
+
     struct SimulationLogger
         LoggerIo::IOStream
         Logger::FormatLogger
@@ -82,6 +83,7 @@ module SimulationLoggerConfiguration
         SimLogger = SimulationLogger(SimMetaDataDamBreak.SaveLocation)
         ```
         """
+
         function SimulationLogger(SaveLocation::String)
             io_logger = open(SaveLocation * "/" * "SimulationOutput.log", "w")
             logger    = FormatLogger(io_logger::IOStream) do io, args
@@ -120,6 +122,7 @@ module SimulationLoggerConfiguration
     InitializeLogger(SimLogger,SimConstants,SimMetaData)
     ```
     """
+
     function InitializeLogger(SimLogger,SimConstants,SimMetaData)
         with_logger(SimLogger.Logger) do
             @info sprint(InteractiveUtils.versioninfo)
@@ -149,6 +152,7 @@ module SimulationLoggerConfiguration
     LogStep(SimLogger, SimMetaData, HourGlass)
     ```
     """
+
     function LogStep(SimLogger, SimMetaData, HourGlass)
         with_logger(SimLogger.Logger) do
             PartNumber               = "Part_" * lpad(SimMetaData.OutputIterationCounter,4,"0")
@@ -180,6 +184,7 @@ module SimulationLoggerConfiguration
     LogFinal(SimLogger, HourGlass)
     ```
     """
+    
     function LogFinal(SimLogger, HourGlass)
         with_logger(SimLogger.Logger) do
             # Get the current date and time

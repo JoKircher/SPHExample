@@ -37,6 +37,7 @@ Function to process each interaction
 ComputeInteractions!(SimMetaData, SimConstants, Position, Kernel, KernelGradient, Density, Pressure, Velocity, dρdtI, dvdtI, i, j, MotionLimiter, ichunk)
 ```
 """
+
 function ComputeInteractions!(SimMetaData, SimConstants, Position, KernelThreaded, KernelGradientThreaded, Density, Pressure, Velocity, dρdtI, dvdtI, i, j, MotionLimiter, ichunk)
     @unpack FlagViscosityTreatment, FlagDensityDiffusion, FlagOutputKernelValues = SimMetaData
     @unpack ρ₀, h, h⁻¹, m₀, αD, α, g, c₀, δᵩ, η², H², Cb⁻¹, ν₀, dx = SimConstants
@@ -135,6 +136,7 @@ Reduce threaded arrays
 reduce_sum!(dρdtI, dρdtIThreaded)
 ```
 """
+
 @inline function reduce_sum!(target_array, arrays)
     for array in arrays
         target_array .+= array
@@ -265,6 +267,7 @@ RunSimulation(
 )
 ```
 """
+
 function RunSimulation(;FluidCSV::String,
     BoundCSV::String,
     SimMetaData::SimulationMetaData{Dimensions, FloatType},
@@ -381,7 +384,7 @@ let
 
     SimMetaDataDamBreak  = SimulationMetaData{Dimensions,FloatType}(
         SimulationName="Test", 
-        SaveLocation="C:/Users/kirchejo/Repos/SPHExample/results/v0.5_full_scps/",
+        SaveLocation="C:/Users/kirchejo/Repos/SPHExample/results/v0.5_full/",
         SimulationTime=2,
         OutputEach=0.01,
         FlagDensityDiffusion=true,

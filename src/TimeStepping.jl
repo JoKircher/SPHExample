@@ -21,6 +21,7 @@ module TimeStepping
     dt  = Δt(Position, Velocity, Acceleration, SimConstants)
     ```
     """
+    
     function Δt(Position, Velocity, Acceleration,SimulationConstants)
         @unpack c₀, h, CFL, η² = SimulationConstants
 

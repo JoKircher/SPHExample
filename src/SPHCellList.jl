@@ -23,6 +23,7 @@ using ..AuxillaryFunctions
     Stencil                = ConstructStencil(Val(Dimensions))
     ```
     """
+
     function ConstructStencil(v::Val{d}) where d
         n_ = CartesianIndices(ntuple(_->-1:1,v))
         half_length = length(n_) ÷ 2
@@ -45,6 +46,7 @@ using ..AuxillaryFunctions
     ExtractCells!(Particles, CutOff)
     ```
     """
+
     @inline function ExtractCells!(Particles, ::Val{InverseCutOff}) where InverseCutOff
         # Replace unsafe_trunc with trunc if this ever errors
         function map_floor(x)
@@ -77,6 +79,7 @@ using ..AuxillaryFunctions
     IndexCounter = UpdateNeighbors!(SimParticles, InverseCutOff, SortingScratchSpace,  ParticleRanges, UniqueCells)
     ```
     """
+
     function UpdateNeighbors!(Particles, CutOff, SortingScratchSpace, ParticleRanges, UniqueCells)
         ExtractCells!(Particles, CutOff)
 
@@ -128,6 +131,7 @@ using ..AuxillaryFunctions
     NeighborLoop!(ComputeInteractions!, SimMetaData, SimConstants, ParticleRanges, Stencil, Position, KernelThreaded, KernelGradientThreaded, Density, Pressure, Velocity, dρdtIThreaded, AccelerationThreaded,  MotionLimiter, UniqueCells, IndexCounter)
     ```
     """
+    
     function NeighborLoop!(ComputeInteractions!, SimMetaData, SimConstants, ParticleRanges, Stencil, Position, Kernel, KernelGradient, Density, Pressure, Velocity, dρdtI, dvdtI,  MotionLimiter, UniqueCells, IndexCounter)
         UniqueCells = view(UniqueCells, 1:IndexCounter)
         @threads for (ichunk, inds) in enumerate(chunks(UniqueCells; n=nthreads()))

@@ -24,6 +24,7 @@ Calculating the pressure from density with the Tait-Equation using the @fastpow 
 EquationOfStateGamma7(Density[i],c₀,ρ₀)
 ```
 """
+
 @inline function EquationOfStateGamma7(ρ,c₀,ρ₀)
     return @fastpow ((c₀^2*ρ₀)/7) * ((ρ/ρ₀)^7 - 1)
 end
@@ -47,6 +48,7 @@ Calculating the pressure from density with the Tait-Equation
 EquationOfState(Density[i],c₀,γ,ρ₀)
 ```
 """
+
 function EquationOfState(ρ,c₀,γ,ρ₀)
     return ((c₀^2*ρ₀)/γ) * ((ρ/ρ₀)^γ - 1)
 end
@@ -69,6 +71,7 @@ Calculating the pressure for the given density
 Pressure!(SimParticles.Pressure,SimParticles.Density,SimConstants)
 ```
 """
+
 @inline function Pressure!(Press, Density, SimulationConstants)
     @unpack c₀,γ,ρ₀ = SimulationConstants
     @inbounds Base.Threads.@threads for i ∈ eachindex(Press,Density)
@@ -122,6 +125,7 @@ Limit the density of boundary partices to ρ₀
 LimitDensityAtBoundary!(Density, SimConstants.ρ₀, MotionLimiter)
 ```
 """
+
 @inline function LimitDensityAtBoundary!(Density,ρ₀, MotionLimiter)
     @inbounds for i in eachindex(Density)
         if (Density[i] < ρ₀) * !Bool(MotionLimiter[i])
@@ -145,6 +149,7 @@ Only fluid particles are influenced by gravity
 ConstructGravitySVector(Acceleration[i], SimConstants.g * GravityFactor[i])
 ```
 """
+
 @inline function ConstructGravitySVector(_::SVector{N, T}, value) where {N, T}
     return SVector{N, T}(ntuple(i -> i == N ? value : 0, N))
 end
@@ -165,6 +170,7 @@ Function to estimate the 7th root of the input x
 Estimate7thRoot( 1 + (P * invCb))
 ```
 """
+
 #https://discourse.julialang.org/t/can-this-be-written-even-faster-cpu/109924/28
 @inline function Estimate7thRoot(x)
     # todo tune the magic constant
@@ -199,6 +205,7 @@ Calculates the inverse hydrostatic equation of state
 Estimate7thRoot( 1 + (P * invCb))
 ```
 """
+
 @inline InverseHydrostaticEquationOfState(ρ₀, P, invCb) = ρ₀ * ( Estimate7thRoot( 1 + (P * invCb)))
 
 end

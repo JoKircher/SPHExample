@@ -28,6 +28,7 @@ Load the particles for a .csv to static data structures
 Position, density_fluid, density_bound  = LoadParticlesFromCSV_StaticArrays(Dimensions,FloatType, FluidCSV,BoundCSV)
 ```
 """
+
 function LoadParticlesFromCSV_StaticArrays(dims, float_type, fluid_csv, boundary_csv)
     DF_FLUID = CSV.read(fluid_csv, DataFrame)
     DF_BOUND = CSV.read(boundary_csv, DataFrame)
@@ -79,6 +80,7 @@ Allocate data structures for particles loaded with LoadParticlesFromCSV_StaticAr
 SimParticles, dρdtI, Velocityₙ⁺, Positionₙ⁺, ρₙ⁺, Kernel, KernelGradient = AllocateDataStructures(Dimensions,FloatType, FluidCSV,BoundCSV)
 ```
 """
+
 function AllocateDataStructures(Dimensions,FloatType, FluidCSV,BoundCSV)
     @inline Position, density_fluid, density_bound  = LoadParticlesFromCSV_StaticArrays(Dimensions,FloatType, FluidCSV,BoundCSV)
 
