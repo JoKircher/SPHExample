@@ -5,7 +5,22 @@ module TimeStepping
     using LinearAlgebra
     using Parameters
 
-    # A few time stepping controls implemented to allow for an adaptive time step
+    """
+        function Δt(Position, Velocity, Acceleration,SimulationConstants)
+
+    A few time stepping controls implemented to allow for an adaptive time step
+
+    # Parameters
+    - `Position`: Particle postions.
+    - `Velocity`: Particle Velocities.
+    - `Acceleration`:Particle Accelerations.
+    - `SimConstants`: Simulation constants.
+
+    # Example
+    ```julia
+    dt  = Δt(Position, Velocity, Acceleration, SimConstants)
+    ```
+    """
     function Δt(Position, Velocity, Acceleration,SimulationConstants)
         @unpack c₀, h, CFL, η² = SimulationConstants
 

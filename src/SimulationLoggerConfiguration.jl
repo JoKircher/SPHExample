@@ -8,7 +8,22 @@ module SimulationLoggerConfiguration
 
     export SimulationLogger, generate_format_string, InitializeLogger, LogStep, LogFinal
 
-    # Function to dynamically generate a format string based on values
+    """
+        function generate_format_string(values)
+
+    Function to dynamically generate a format string based on values
+
+    # Parameters
+    - `values`: values to be formatted
+
+    # Return
+    - `format_str`: formatted string
+
+    # Example
+    ```julia
+    format_string = generate_format_string(values)
+    ```
+    """
     function generate_format_string(values)
         # Calculate the display length for each value
         lengths = [length(string(value)) for value in values]
@@ -26,6 +41,24 @@ module SimulationLoggerConfiguration
         return format_str
     end
 
+    """
+        struct SimulationLogger
+
+    SimulationLogger is a struct containing the parameters to output a log during the simulation.
+
+    # Fields
+    - `LoggerIo::IOStream`: Logger stream where log messages are written to.
+    - `Logger::FormatLogger`: Logger that contains all logging information
+    - `ValuesToPrint::String`: String that will be printed.
+    - `ValuesToPrintC::String`: C-String that will be printed.
+    - `CurrentDate::DateTime`: CurrentDate.
+    - `CurrentDataStr::String`: LoggerMetaData string.
+
+    # Example
+    ```julia
+    SimLogger = SimulationLogger(SimMetaDataDamBreak.SaveLocation)
+    ```
+    """
     struct SimulationLogger
         LoggerIo::IOStream
         Logger::FormatLogger
@@ -35,7 +68,19 @@ module SimulationLoggerConfiguration
         CurrentDate::DateTime
         CurrentDataStr::String
 
+        """
+            function SimulationLogger(SaveLocation::String)
 
+        SimulationLogger constructor
+
+        # Parameters
+        - `SaveLocation::String`: String where logger should write log files to.
+
+        # Example
+        ```julia
+        SimLogger = SimulationLogger(SimMetaDataDamBreak.SaveLocation)
+        ```
+        """
         function SimulationLogger(SaveLocation::String)
             io_logger = open(SaveLocation * "/" * "SimulationOutput.log", "w")
             logger    = FormatLogger(io_logger::IOStream) do io, args
@@ -59,6 +104,21 @@ module SimulationLoggerConfiguration
         end
     end
 
+    """
+        function InitializeLogger(SimLogger,SimConstants,SimMetaData)
+
+    SimulationLogger constructor
+
+    # Parameters
+    - `SimLogger`: Logger that handles the output of the logger file.
+    - `SimConstants`: Simulation SimConstants
+    - `SimMetaData`: Simulation Meta data
+
+    # Example
+    ```julia
+    InitializeLogger(SimLogger,SimConstants,SimMetaData)
+    ```
+    """
     function InitializeLogger(SimLogger,SimConstants,SimMetaData)
         with_logger(SimLogger.Logger) do
             @info sprint(InteractiveUtils.versioninfo)
@@ -73,6 +133,21 @@ module SimulationLoggerConfiguration
         end
     end
 
+    """
+        function LogStep(SimLogger,SimMetaData, HourGlass)
+
+    logger output at each simulation step
+
+    # Parameters
+    - `SimLogger`: Logger that handles the output of the logger file.
+    - `SimMetaData`: Simulation Meta data
+    - `HourGlass`: Keeps track of execution time.
+
+    # Example
+    ```julia
+    LogStep(SimLogger, SimMetaData, HourGlass)
+    ```
+    """
     function LogStep(SimLogger, SimMetaData, HourGlass)
         with_logger(SimLogger.Logger) do
             PartNumber               = "Part_" * lpad(SimMetaData.OutputIterationCounter,4,"0")
@@ -90,6 +165,20 @@ module SimulationLoggerConfiguration
         end
     end
 
+    """
+        function LogFinal(SimLogger,HourGlass)
+
+    logger output at the end of the simulation run
+
+    # Parameters
+    - `SimLogger`: Logger that handles the output of the logger file.
+    - `HourGlass`: Keeps track of execution time.
+
+    # Example
+    ```julia
+    LogFinal(SimLogger, HourGlass)
+    ```
+    """
     function LogFinal(SimLogger, HourGlass)
         with_logger(SimLogger.Logger) do
             # Get the current date and time

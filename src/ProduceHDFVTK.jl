@@ -4,6 +4,27 @@ module ProduceHDFVTK
 
     using HDF5
 
+    """
+        function SaveVTKHDF
+
+    Save current simulation results as a VTKHDF
+
+    # Parameters
+    - `fid_vector`: Vector of HDF5 files where the simulation is stored
+    - `index`: Index of current simulation step
+    - `filepath`: File path where VTKHDF file should be saved
+    - `points`: Particles that should be stored
+    - `variable_names`: Array of variable names that should be stored
+    - `args...`: Values of variables that should be stored
+
+    # Return
+    - VTKHDF file
+
+    # Example
+    ```julia
+    SaveVTKHDF(fid_vector, Index, SaveLocation(Index),to_3d(SimParticles.Position),["Kernel", "KernelGradient", "Density", "Pressure","Velocity", "Acceleration", "BoundaryBool" , "ID"], Kernel, KernelGradient, SimParticles.Density, SimParticles.Pressure, SimParticles.Velocity, SimParticles.Acceleration, Int.(SimParticles.BoundaryBool), SimParticles.ID)
+    ```
+    """
     function SaveVTKHDF(fid_vector, index, filepath,points, variable_names, args...)
         @assert length(variable_names) == length(args) "Same number of variable_names as args is necessary"
             io = h5open(filepath, "w")

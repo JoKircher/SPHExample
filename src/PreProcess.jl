@@ -7,6 +7,27 @@ using DataFrames
 using StaticArrays
 using StructArrays
 
+"""
+    function LoadParticlesFromCSV_StaticArrays
+
+Load the particles for a .csv to static data structures
+
+# Parameters
+- `dims`: Dimension of the simulation domain
+- `float_type`: The type of float under which the partices should be loaded, e.g. Float32, Float64
+- `fluid_csv`: File where fluid particles are stored
+- `boundary_csv`: File where boundary particles are stored
+
+# Return
+- `points`: Loaded fluid and boundary particles
+- `density_fluid`: Density of fluid particles
+- `density_bound`: Density of boundary particles
+
+# Example
+```julia
+Position, density_fluid, density_bound  = LoadParticlesFromCSV_StaticArrays(Dimensions,FloatType, FluidCSV,BoundCSV)
+```
+"""
 function LoadParticlesFromCSV_StaticArrays(dims, float_type, fluid_csv, boundary_csv)
     DF_FLUID = CSV.read(fluid_csv, DataFrame)
     DF_BOUND = CSV.read(boundary_csv, DataFrame)
@@ -33,6 +54,31 @@ function LoadParticlesFromCSV_StaticArrays(dims, float_type, fluid_csv, boundary
     return points, density_fluid, density_bound
 end
 
+"""
+    function AllocateDataStructures
+
+Allocate data structures for particles loaded with LoadParticlesFromCSV_StaticArrays
+
+# Parameters
+- `Dimensions`: Dimension of the simulation domain
+- `FloatType`: The type of float under which the partices should be loaded, e.g. Float32, Float64
+- `FluidCSV`: File where fluid particles are stored
+- `BoundaryCSV`: File where boundary particles are stored
+
+# Return
+- `SimParticles::StructArray`: Holds all values for the loaed particles(Position, Acceleration, Velocity)
+- `dρdtI`: Density derivative
+- `Velocityₙ⁺`: Half step Velocity
+-`Positionₙ⁺`: Half step Position
+- `ρₙ⁺`: Half step density
+- `Kernel`: Kernel value
+- `KernelGradient`: Kernel gradient value
+
+# Example
+```julia
+SimParticles, dρdtI, Velocityₙ⁺, Positionₙ⁺, ρₙ⁺, Kernel, KernelGradient = AllocateDataStructures(Dimensions,FloatType, FluidCSV,BoundCSV)
+```
+"""
 function AllocateDataStructures(Dimensions,FloatType, FluidCSV,BoundCSV)
     @inline Position, density_fluid, density_bound  = LoadParticlesFromCSV_StaticArrays(Dimensions,FloatType, FluidCSV,BoundCSV)
 
