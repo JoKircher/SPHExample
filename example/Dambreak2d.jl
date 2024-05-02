@@ -84,6 +84,14 @@ function ComputeInteractions!(SimMetaData, SimConstants, Position, KernelThreade
         dvdtI[ichunk][i] += dvdt⁺ + Πᵢ 
         dvdtI[ichunk][j] += dvdt⁻ + Πⱼ
 
+        if FlagOutputKernelValues
+            Wᵢⱼ  = @fastpow αD*(1-q/2)^4*(2*q + 1)
+            KernelThreaded[ichunk][i]         += Wᵢⱼ
+            KernelThreaded[ichunk][j]         += Wᵢⱼ
+            KernelGradientThreaded[ichunk][i] +=  ∇ᵢWᵢⱼ
+            KernelGradientThreaded[ichunk][j] += -∇ᵢWᵢⱼ
+        end
+
     end
 
     return nothing
