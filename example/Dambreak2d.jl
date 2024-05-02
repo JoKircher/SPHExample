@@ -302,7 +302,7 @@ let
         SimulationTime=2,
         OutputEach=0.01,
         FlagDensityDiffusion=true,
-        FlagViscosityTreatment = :ArtificialViscosity,
+        FlagViscosityTreatment =  :ArtificialViscosity, #:None,
         FlagOutputKernelValues=false,
         FlagLog=true
     )
