@@ -165,7 +165,6 @@ Estimate7thRoot( 1 + (P * invCb))
 ```
 """
 @inline function Estimate7thRoot(x)
-    # todo tune the magic constant
     # initial guess based on fast inverse sqrt trick but adjusted to compute x^(1/7)
     t = copysign(reinterpret(Float64, 0x36cd000000000000 + reinterpret(UInt64,abs(x))÷7), x)
     @fastmath for _ in 1:2
