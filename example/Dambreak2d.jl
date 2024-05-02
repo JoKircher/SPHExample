@@ -69,6 +69,7 @@ function ComputeInteractions!(SimMetaData, SimConstants, Position, KernelThreade
         dvdt⁻   = - dvdt⁺
 
         if FlagViscosityTreatment == :ArtificialViscosity
+            Πᵢ, Πⱼ = check_viscosity(ρᵢ, ρⱼ, vᵢⱼ, xᵢⱼ, h, invd²η², m₀, α, c₀, ∇ᵢWᵢⱼ)
             ρ̄ᵢⱼ       = (ρᵢ+ρⱼ)*0.5
             cond      = dot(vᵢⱼ, xᵢⱼ)
             cond_bool = cond < 0.0
@@ -279,6 +280,16 @@ function chech_diffusion(ρ₀, g, xᵢⱼ,Cb⁻¹,ρⱼ, ρᵢ, dᵢⱼ, η², 
     Dⱼ    =  δᵩ * h * c₀ * (m₀/ρᵢ) * dot(Ψⱼᵢ , -∇ᵢWᵢⱼ) #* MLcond
     
     Dᵢ,  Dⱼ
+end
+
+function check_viscosity(ρᵢ, ρⱼ, vᵢⱼ, xᵢⱼ, h, invd²η², m₀, α, c₀, ∇ᵢWᵢⱼ)
+    ρ̄ᵢⱼ       = (ρᵢ+ρⱼ)*0.5
+    cond      = dot(vᵢⱼ, xᵢⱼ)
+    cond_bool = cond < 0.0
+    μᵢⱼ       = h*cond * invd²η²
+    Πᵢ        = - m₀ * (cond_bool*(-α*c₀*μᵢⱼ)/ρ̄ᵢⱼ) * ∇ᵢWᵢⱼ
+    Πⱼ        = - Πᵢ
+    Πᵢ, Πⱼ
 end
 
 let
