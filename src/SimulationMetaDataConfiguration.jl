@@ -53,7 +53,7 @@ metadata = SimulationMetaData(
     SilentOutput::Bool                      = false
     ThreadsCPU::Int                         = Threads.nthreads()
     ProgressSpecification::ProgressUnknown  =  ProgressUnknown(desc="Burning the midnight oil:", spinner=true, showspeed=true) 
-    FlagViscosityTreatment::Symbol          = :ArtificialViscosity; @assert in(FlagViscosityTreatment, Set((:None, :ArtificialViscosity, :Laminar, :LaminarSPS))) == true "ViscosityTreatment must be either :None, :ArtificialViscosity, :Laminar, :LaminarSPS"
+    FlagViscosityTreatment::Symbol          = :ArtificialViscosity; @assert in(FlagViscosityTreatment, Set((:None, :ArtificialViscosity))) == true "ViscosityTreatment must be either :None, :ArtificialViscosity"
     FlagDensityDiffusion::Bool              = false
     FlagOutputKernelValues::Bool            = false     
     FlagLog::Bool                           = false     

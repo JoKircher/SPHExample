@@ -39,25 +39,27 @@ function ComputeInteractions!(SimMetaData, SimConstants, Position, KernelThreade
 
         # Density diffusion
         if FlagDensityDiffusion
-            Pᵢⱼᴴ  = ρ₀ * (-g) * -xᵢⱼ[end]
-            ρᵢⱼᴴ  = InverseHydrostaticEquationOfState(ρ₀, Pᵢⱼᴴ, Cb⁻¹)
-            Pⱼᵢᴴ  = -Pᵢⱼᴴ
-            ρⱼᵢᴴ  = InverseHydrostaticEquationOfState(ρ₀, Pⱼᵢᴴ, Cb⁻¹)
+            Dᵢ, Dⱼ = chech_diffusion(ρ₀, g, xᵢⱼ,Cb⁻¹,ρⱼ, ρᵢ, dᵢⱼ, η², h, c₀, m₀, ∇ᵢWᵢⱼ, δᵩ)
+            # Pᵢⱼᴴ  = ρ₀ * (-g) * -xᵢⱼ[end]
+            # ρᵢⱼᴴ  = InverseHydrostaticEquationOfState(ρ₀, Pᵢⱼᴴ, Cb⁻¹)
+            # Pⱼᵢᴴ  = -Pᵢⱼᴴ
+            # ρⱼᵢᴴ  = InverseHydrostaticEquationOfState(ρ₀, Pⱼᵢᴴ, Cb⁻¹)
 
-            ρⱼᵢ   = ρⱼ - ρᵢ
+            # ρⱼᵢ   = ρⱼ - ρᵢ
 
-            Ψᵢⱼ   = 2( ρⱼᵢ  - ρᵢⱼᴴ) * (-xᵢⱼ)/(dᵢⱼ^2 + η²)
-            Ψⱼᵢ   = 2(-ρⱼᵢ  - ρⱼᵢᴴ) * ( xᵢⱼ)/(dᵢⱼ^2 + η²) 
+            # Ψᵢⱼ   = 2( ρⱼᵢ  - ρᵢⱼᴴ) * (-xᵢⱼ)/(dᵢⱼ^2 + η²)
+            # Ψⱼᵢ   = 2(-ρⱼᵢ  - ρⱼᵢᴴ) * ( xᵢⱼ)/(dᵢⱼ^2 + η²) 
 
-            MLcond = MotionLimiter[i] * MotionLimiter[j]
-            Dᵢ    =  δᵩ * h * c₀ * (m₀/ρⱼ) * dot(Ψᵢⱼ ,  ∇ᵢWᵢⱼ) * MLcond
-            Dⱼ    =  δᵩ * h * c₀ * (m₀/ρᵢ) * dot(Ψⱼᵢ , -∇ᵢWᵢⱼ) * MLcond
+            # # MLcond = MotionLimiter[i] * MotionLimiter[j]
+            # Dᵢ    =  δᵩ * h * c₀ * (m₀/ρⱼ) * dot(Ψᵢⱼ ,  ∇ᵢWᵢⱼ) #* MLcond
+            # Dⱼ    =  δᵩ * h * c₀ * (m₀/ρᵢ) * dot(Ψⱼᵢ , -∇ᵢWᵢⱼ) #* MLcond
         else
             Dᵢ  = 0.0
             Dⱼ  = 0.0
         end
-        dρdtI[ichunk][i] += dρdt⁺ + Dᵢ
-        dρdtI[ichunk][j] += dρdt⁻ + Dⱼ
+        MLcond = MotionLimiter[i] * MotionLimiter[j]
+        dρdtI[ichunk][i] += dρdt⁺ + Dᵢ * MLcond
+        dρdtI[ichunk][j] += dρdt⁻ + Dⱼ * MLcond
 
 
         Pᵢ      =  Pressure[i]
@@ -78,58 +80,9 @@ function ComputeInteractions!(SimMetaData, SimConstants, Position, KernelThreade
             Πⱼ        = Πᵢ
         end
     
-        if FlagViscosityTreatment == :Laminar || FlagViscosityTreatment == :LaminarSPS
-            # 4 comes from 2 divided by 0.5 from average density
-            # should divide by ρᵢ eq 6 DPC
-            # ν₀∇²uᵢ = (1/ρᵢ) * ( (4 * m₀ * (ρᵢ * ν₀) * dot( xᵢⱼ, ∇ᵢWᵢⱼ)  ) / ( (ρᵢ + ρⱼ) + (dᵢⱼ * dᵢⱼ + η²) ) ) *  vᵢⱼ
-            # ν₀∇²uⱼ = (1/ρⱼ) * ( (4 * m₀ * (ρⱼ * ν₀) * dot(-xᵢⱼ,-∇ᵢWᵢⱼ)  ) / ( (ρᵢ + ρⱼ) + (dᵢⱼ * dᵢⱼ + η²) ) ) * -vᵢⱼ
-            visc_symmetric_term = (4 * m₀ * ν₀ * dot( xᵢⱼ, ∇ᵢWᵢⱼ)) / ((ρᵢ + ρⱼ) + (dᵢⱼ * dᵢⱼ + η²))
-            # ν₀∇²uᵢ = (1/ρᵢ) * visc_symmetric_term *  vᵢⱼ * ρᵢ
-            # ν₀∇²uⱼ = (1/ρⱼ) * visc_symmetric_term * -vᵢⱼ * ρⱼ
-            ν₀∇²uᵢ =  visc_symmetric_term *  vᵢⱼ
-            ν₀∇²uⱼ = -ν₀∇²uᵢ #visc_symmetric_term * -vᵢⱼ
-        else
-            ν₀∇²uᵢ = zero(xᵢⱼ)
-            ν₀∇²uⱼ = ν₀∇²uᵢ
-        end
-    
-        if FlagViscosityTreatment == :LaminarSPS 
-            Iᴹ       = diagm(one.(xᵢⱼ))
-            #julia> a .- a'
-            # 3×3 SMatrix{3, 3, Float64, 9} with indices SOneTo(3)×SOneTo(3):
-            # 0.0  0.0  0.0
-            # 0.0  0.0  0.0
-            # 0.0  0.0  0.0
-            # Strain *rate* tensor is the gradient of velocity
-            Sᵢ = ∇vᵢ =  (m₀/ρⱼ) * (vⱼ - vᵢ) * ∇ᵢWᵢⱼ'
-            norm_Sᵢ  = sqrt(2 * sum(Sᵢ .^ 2))
-            νtᵢ      = (SmagorinskyConstant * dx)^2 * norm_Sᵢ
-            trace_Sᵢ = sum(diag(Sᵢ))
-            τᶿᵢ      = 2*νtᵢ*ρᵢ * (Sᵢ - (1/3) * trace_Sᵢ * Iᴹ) - (2/3) * ρᵢ * BlinConstant * dx^2 * norm_Sᵢ^2 * Iᴹ
-            Sⱼ = ∇vⱼ =  (m₀/ρᵢ) * (vᵢ - vⱼ) * -∇ᵢWᵢⱼ'
-            norm_Sⱼ  = sqrt(2 * sum(Sⱼ .^ 2))
-            νtⱼ      = (SmagorinskyConstant * dx)^2 * norm_Sⱼ
-            trace_Sⱼ = sum(diag(Sⱼ))
-            τᶿⱼ      = 2*νtⱼ*ρⱼ * (Sⱼ - (1/3) * trace_Sⱼ * Iᴹ) - (2/3) * ρⱼ * BlinConstant * dx^2 * norm_Sⱼ^2 * Iᴹ
-    
-            # MATHEMATICALLY THIS IS DOT PRODUCT TO GO FROM TENSOR TO VECTOR, BUT USE * IN JULIA TO REPRESENT IT
-            dτdtᵢ = (m₀/(ρⱼ * ρᵢ)) * (τᶿᵢ + τᶿⱼ) *  ∇ᵢWᵢⱼ 
-            dτdtⱼ = (m₀/(ρᵢ * ρⱼ)) * (τᶿᵢ + τᶿⱼ) * -∇ᵢWᵢⱼ 
-        else
-            dτdtᵢ  = zero(xᵢⱼ)
-            dτdtⱼ  = dτdtᵢ
-        end
-    
-        dvdtI[ichunk][i] += dvdt⁺ + Πᵢ + ν₀∇²uᵢ + dτdtᵢ
-        dvdtI[ichunk][j] += dvdt⁻ + Πⱼ + ν₀∇²uⱼ + dτdtⱼ
+        dvdtI[ichunk][i] += dvdt⁺ + Πᵢ 
+        dvdtI[ichunk][j] += dvdt⁻ + Πⱼ
 
-        if FlagOutputKernelValues
-            Wᵢⱼ  = @fastpow αD*(1-q/2)^4*(2*q + 1)
-            KernelThreaded[ichunk][i]         += Wᵢⱼ
-            KernelThreaded[ichunk][j]         += Wᵢⱼ
-            KernelGradientThreaded[ichunk][i] +=  ∇ᵢWᵢⱼ
-            KernelGradientThreaded[ichunk][j] += -∇ᵢWᵢⱼ
-        end
     end
 
     return nothing
@@ -153,12 +106,8 @@ end
     @timeit SimMetaData.HourGlass "01 Update TimeStep"  dt  = Δt(Position, Velocity, Acceleration, SimConstants)
     dt₂ = dt * 0.5
 
-    # if mod(SimMetaData.Iteration,10) == 0
-        @timeit SimMetaData.HourGlass "02 Calculate IndexCounter" IndexCounter = UpdateNeighbors!(SimParticles, InverseCutOff, SortingScratchSpace,  ParticleRanges, UniqueCells)
-    # else
-        # IndexCounter = findfirst(isequal(0), ParticleRanges) - 2
-    # end
-
+    @timeit SimMetaData.HourGlass "02 Calculate IndexCounter" IndexCounter = UpdateNeighbors!(SimParticles, InverseCutOff, SortingScratchSpace,  ParticleRanges, UniqueCells)
+   
     @timeit SimMetaData.HourGlass "03 ResetArrays"                           ResetArrays!(Kernel, KernelGradient, dρdtI, Acceleration); ResetArrays!.(KernelThreaded, KernelGradientThreaded, dρdtIThreaded, AccelerationThreaded)
 
     Pressure!(SimParticles.Pressure,SimParticles.Density,SimConstants)
@@ -314,6 +263,24 @@ function RunSimulation(;FluidCSV::String,
     end
 end
 
+function chech_diffusion(ρ₀, g, xᵢⱼ,Cb⁻¹,ρⱼ, ρᵢ, dᵢⱼ, η², h, c₀, m₀, ∇ᵢWᵢⱼ, δᵩ)
+    Pᵢⱼᴴ  = ρ₀ * (-g) * -xᵢⱼ[end]
+    ρᵢⱼᴴ  = InverseHydrostaticEquationOfState(ρ₀, Pᵢⱼᴴ, Cb⁻¹)
+    Pⱼᵢᴴ  = -Pᵢⱼᴴ
+    ρⱼᵢᴴ  = InverseHydrostaticEquationOfState(ρ₀, Pⱼᵢᴴ, Cb⁻¹)
+
+    ρⱼᵢ   = ρⱼ - ρᵢ
+
+    Ψᵢⱼ   = 2( ρⱼᵢ  - ρᵢⱼᴴ) * (-xᵢⱼ)/(dᵢⱼ^2 + η²)
+    Ψⱼᵢ   = 2(-ρⱼᵢ  - ρⱼᵢᴴ) * ( xᵢⱼ)/(dᵢⱼ^2 + η²) 
+
+    # MLcond = MotionLimiter[i] * MotionLimiter[j]
+    Dᵢ    =  δᵩ * h * c₀ * (m₀/ρⱼ) * dot(Ψᵢⱼ ,  ∇ᵢWᵢⱼ) #* MLcond
+    Dⱼ    =  δᵩ * h * c₀ * (m₀/ρᵢ) * dot(Ψⱼᵢ , -∇ᵢWᵢⱼ) #* MLcond
+    
+    Dᵢ,  Dⱼ
+end
+
 let
     Dimensions = 2
     FloatType  = Float64
@@ -341,3 +308,4 @@ let
         SimLogger          = SimLogger
     )
 end
+ 
