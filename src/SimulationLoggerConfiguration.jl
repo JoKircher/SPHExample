@@ -82,6 +82,9 @@ module SimulationLoggerConfiguration
         ```
         """
         function SimulationLogger(SaveLocation::String)
+            if !isdir(SaveLocation)
+                mkdir(SaveLocation)
+            end
             io_logger = open(SaveLocation * "/" * "SimulationOutput.log", "w")
             logger    = FormatLogger(io_logger::IOStream) do io, args
                 # Write the module, level and message only

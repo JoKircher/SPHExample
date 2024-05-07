@@ -87,7 +87,8 @@ function ComputeInteractions!(SimMetaData, SimConstants, Position, KernelThreade
 
         Pᵢ      =  Pressure[i]
         Pⱼ      =  Pressure[j]
-        Pfac    = (Pᵢ+Pⱼ)/(ρᵢ*ρⱼ)
+        # Pfac    = (Pᵢ+Pⱼ)/(ρᵢ*ρⱼ)
+        Pfac    = ((Pᵢ/ρᵢ^2)+ (Pⱼ/ρⱼ^2))
         dvdt⁺   = - m₀ * Pfac *  ∇ᵢWᵢⱼ
         dvdt⁻   = - dvdt⁺
 
@@ -401,11 +402,11 @@ let
 
     SimMetaDataDamBreak  = SimulationMetaData{Dimensions,FloatType}(
         SimulationName="Test", 
-        SaveLocation="C:/Users/kirchejo/Repos/SPHExample/results/v0.5_full/",
+        SaveLocation="C:/Users/kirchejo/Repos/SPHExample/results/v0.5_other_symmetry_visco/",
         SimulationTime=2,
         OutputEach=0.01,
-        FlagDensityDiffusion=true,
-        FlagViscosityTreatment =  :ArtificialViscosity, #:None,
+        FlagDensityDiffusion=false,
+        FlagViscosityTreatment = :ArtificialViscosity, #:None,
         FlagOutputKernelValues=false,
         FlagLog=true
     )
