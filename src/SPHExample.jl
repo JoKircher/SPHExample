@@ -24,7 +24,7 @@ module SPHExample
     export Δt
 
     using .SimulationEquations
-    export EquationOfState, EquationOfStateGamma7, Pressure!, DensityEpsi!, LimitDensityAtBoundary!, ConstructGravitySVector, InverseHydrostaticEquationOfState
+    export EquationOfState, Pressure!, DensityEpsi!, LimitDensityAtBoundary!, ConstructGravitySVector, InverseHydrostaticEquationOfState
 
     using .SimulationLoggerConfiguration
     export SimulationLogger, generate_format_string, InitializeLogger, LogStep, LogFinal

@@ -29,7 +29,7 @@ module SimulationLoggerConfiguration
         lengths = [length(string(value)) for value in values]
         
         # Optionally, add extra padding
-        padding = 10 #maximum(lengths)  # Adjust padding as needed
+        padding = 10 
         lengths = [len + padding for len in lengths]
         
         # Build format specifiers for each length
@@ -88,7 +88,6 @@ module SimulationLoggerConfiguration
             io_logger = open(SaveLocation * "/" * "SimulationOutput.log", "w")
             logger    = FormatLogger(io_logger::IOStream) do io, args
                 # Write the module, level and message only
-                # println(io, args._module, " | ", "[", args.level, "] ", args.message)
                 println(io, args.message)
             end
 

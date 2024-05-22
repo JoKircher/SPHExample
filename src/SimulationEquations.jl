@@ -1,13 +1,13 @@
 module SimulationEquations
 
-export EquationOfState, EquationOfStateGamma7, Pressure!, DensityEpsi!, LimitDensityAtBoundary!, ConstructGravitySVector, InverseHydrostaticEquationOfState
+export EquationOfState, Pressure!, DensityEpsi!, LimitDensityAtBoundary!, ConstructGravitySVector, InverseHydrostaticEquationOfState
 
 using StaticArrays
 using Parameters
 using FastPow
 
 """
-    function EquationOfStateGamma7
+    function EquationOfState
 
 Calculating the pressure from density with the Tait-Equation using the @fastpow macro
 
@@ -21,34 +21,11 @@ Calculating the pressure from density with the Tait-Equation using the @fastpow 
 
 # Example
 ```julia
-EquationOfStateGamma7(Density[i],c₀,ρ₀)
+EquationOfState(Density[i],c₀,ρ₀)
 ```
 """ 
-@inline function EquationOfStateGamma7(ρ,c₀,ρ₀)
+@inline function EquationOfState(ρ,c₀,ρ₀)
     return @fastpow ((c₀^2*ρ₀)/7) * ((ρ/ρ₀)^7 - 1)
-end
-
-"""
-    function EquationOfState
-
-Calculating the pressure from density with the Tait-Equation
-
-# Parameters
-- `ρ`: density
-- `c₀`: speed of sound
-- `γ`: adiabatic index
-- `ρ₀`: Reference density
-
-# Return
-- pressure
-
-# Example
-```julia
-EquationOfState(Density[i],c₀,γ,ρ₀)
-```
-"""
-function EquationOfState(ρ,c₀,γ,ρ₀)
-    return ((c₀^2*ρ₀)/γ) * ((ρ/ρ₀)^γ - 1)
 end
 
 """
@@ -72,8 +49,7 @@ Pressure!(SimParticles.Pressure,SimParticles.Density,SimConstants)
 @inline function Pressure!(Press, Density, SimulationConstants)
     @unpack c₀,γ,ρ₀ = SimulationConstants
     @inbounds Base.Threads.@threads for i ∈ eachindex(Press,Density)
-        # Press[i] = EquationOfState(Density[i],c₀,γ,ρ₀)
-        Press[i] = EquationOfStateGamma7(Density[i],c₀,ρ₀)
+        Press[i] = EquationOfState(Density[i],c₀,ρ₀)
     end
 end
 

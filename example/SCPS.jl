@@ -44,7 +44,6 @@ function ComputeInteractions!(SimMetaData, SimConstants, Position, KernelThreade
     xᵢⱼ  = Position[i] - Position[j]
     xᵢⱼ² = dot(xᵢⱼ,xᵢⱼ)              
     if  xᵢⱼ² <= H²
-        #https://discourse.julialang.org/t/sqrt-abs-x-is-even-faster-than-sqrt/58154/2
         dᵢⱼ  = sqrt(abs(xᵢⱼ²))
 
         q         = min(dᵢⱼ * h⁻¹, 2.0)
@@ -62,20 +61,7 @@ function ComputeInteractions!(SimMetaData, SimConstants, Position, KernelThreade
 
         # Density diffusion
         if FlagDensityDiffusion
-            Dᵢ, Dⱼ = check_diffusion(ρ₀, g, xᵢⱼ,Cb⁻¹,ρⱼ, ρᵢ, dᵢⱼ, η², h, c₀, m₀, ∇ᵢWᵢⱼ, δᵩ)
-            # Pᵢⱼᴴ  = ρ₀ * (-g) * -xᵢⱼ[end]
-            # ρᵢⱼᴴ  = InverseHydrostaticEquationOfState(ρ₀, Pᵢⱼᴴ, Cb⁻¹)
-            # Pⱼᵢᴴ  = -Pᵢⱼᴴ
-            # ρⱼᵢᴴ  = InverseHydrostaticEquationOfState(ρ₀, Pⱼᵢᴴ, Cb⁻¹)
-
-            # ρⱼᵢ   = ρⱼ - ρᵢ
-
-            # Ψᵢⱼ   = 2( ρⱼᵢ  - ρᵢⱼᴴ) * (-xᵢⱼ)/(dᵢⱼ^2 + η²)
-            # Ψⱼᵢ   = 2(-ρⱼᵢ  - ρⱼᵢᴴ) * ( xᵢⱼ)/(dᵢⱼ^2 + η²) 
-
-            # # MLcond = MotionLimiter[i] * MotionLimiter[j]
-            # Dᵢ    =  δᵩ * h * c₀ * (m₀/ρⱼ) * dot(Ψᵢⱼ ,  ∇ᵢWᵢⱼ) #* MLcond
-            # Dⱼ    =  δᵩ * h * c₀ * (m₀/ρᵢ) * dot(Ψⱼᵢ , -∇ᵢWᵢⱼ) #* MLcond
+            Dᵢ, Dⱼ = diffusion_term(ρ₀, g, xᵢⱼ,Cb⁻¹,ρⱼ, ρᵢ, dᵢⱼ, η², h, c₀, m₀, ∇ᵢWᵢⱼ, δᵩ)
         else
             Dᵢ  = 0.0
             Dⱼ  = 0.0
@@ -87,19 +73,12 @@ function ComputeInteractions!(SimMetaData, SimConstants, Position, KernelThreade
 
         Pᵢ      =  Pressure[i]
         Pⱼ      =  Pressure[j]
-        # Pfac    = (Pᵢ+Pⱼ)/(ρᵢ*ρⱼ)
         Pfac    = ((Pᵢ/ρᵢ^2)+ (Pⱼ/ρⱼ^2))
         dvdt⁺   = - m₀ * Pfac *  ∇ᵢWᵢⱼ
         dvdt⁻   = - dvdt⁺
 
         if FlagViscosityTreatment == :ArtificialViscosity
-            Πᵢ, Πⱼ = check_viscosity(ρᵢ, ρⱼ, vᵢⱼ, xᵢⱼ, h, invd²η², m₀, α, c₀, ∇ᵢWᵢⱼ)
-            # ρ̄ᵢⱼ       = (ρᵢ+ρⱼ)*0.5
-            # cond      = dot(vᵢⱼ, xᵢⱼ)
-            # cond_bool = cond < 0.0
-            # μᵢⱼ       = h*cond * invd²η²
-            # Πᵢ        = - m₀ * (cond_bool*(-α*c₀*μᵢⱼ)/ρ̄ᵢⱼ) * ∇ᵢWᵢⱼ
-            # Πⱼ        = - Πᵢ
+            Πᵢ, Πⱼ = viscosity_term(ρᵢ, ρⱼ, vᵢⱼ, xᵢⱼ, h, invd²η², m₀, α, c₀, ∇ᵢWᵢⱼ)
         else
             Πᵢ        = zero(xᵢⱼ)
             Πⱼ        = Πᵢ
@@ -293,7 +272,7 @@ function RunSimulation(;FluidCSV::String,
     SimParticles, dρdtI, Velocityₙ⁺, Positionₙ⁺, ρₙ⁺, Kernel, KernelGradient = AllocateDataStructures(Dimensions,FloatType, FluidCSV,BoundCSV)
     
     
-    NumberOfPoints = length(SimParticles)::Int #Have to type declare, else error?
+    NumberOfPoints = length(SimParticles)::Int 
     @inline Pressure!(SimParticles.Pressure,SimParticles.Density,SimConstants)
 
     @inline begin
@@ -317,7 +296,7 @@ function RunSimulation(;FluidCSV::String,
     fid_vector    = Vector{HDF5.File}(undef, Int(SimMetaData.SimulationTime/SimMetaData.OutputEach + 1))
 
     SaveFile   = (Index) -> SaveVTKHDF(fid_vector, Index, SaveLocation(Index),to_3d(SimParticles.Position),["Kernel", "KernelGradient", "Density", "Pressure","Velocity", "Acceleration", "BoundaryBool" , "ID"], Kernel, KernelGradient, SimParticles.Density, SimParticles.Pressure, SimParticles.Velocity, SimParticles.Acceleration, Int.(SimParticles.BoundaryBool), SimParticles.ID)
-    SimMetaData.OutputIterationCounter += 1 #Since a file has been saved
+    SimMetaData.OutputIterationCounter += 1
     @inline SaveFile(SimMetaData.OutputIterationCounter)
     
 
@@ -361,7 +340,6 @@ function RunSimulation(;FluidCSV::String,
             show(HourGlass,sortby=:name)
             show(HourGlass)
 
-            # This should not be counted in actual run 
             @timeit HourGlass "12B Close hdfvtk output files"  close.(fid_vector)
 
             break
@@ -369,31 +347,12 @@ function RunSimulation(;FluidCSV::String,
     end
 end
 
-function check_diffusion(ρ₀, g, xᵢⱼ,Cb⁻¹,ρⱼ, ρᵢ, dᵢⱼ, η², h, c₀, m₀, ∇ᵢWᵢⱼ, δᵩ)
-    Pᵢⱼᴴ  = ρ₀ * (-g) * -xᵢⱼ[end]
-    ρᵢⱼᴴ  = InverseHydrostaticEquationOfState(ρ₀, Pᵢⱼᴴ, Cb⁻¹)
-    Pⱼᵢᴴ  = -Pᵢⱼᴴ
-    ρⱼᵢᴴ  = InverseHydrostaticEquationOfState(ρ₀, Pⱼᵢᴴ, Cb⁻¹)
-
-    ρⱼᵢ   = ρⱼ - ρᵢ
-
-    Ψᵢⱼ   = 2( ρⱼᵢ  - ρᵢⱼᴴ) * (-xᵢⱼ)/(dᵢⱼ^2 + η²)
-    Ψⱼᵢ   = 2(-ρⱼᵢ  - ρⱼᵢᴴ) * ( xᵢⱼ)/(dᵢⱼ^2 + η²) 
-
-    Dᵢ    =  δᵩ * h * c₀ * (m₀/ρⱼ) * dot(Ψᵢⱼ ,  ∇ᵢWᵢⱼ)
-    Dⱼ    =  δᵩ * h * c₀ * (m₀/ρᵢ) * dot(Ψⱼᵢ , -∇ᵢWᵢⱼ)
-    
-    Dᵢ,  Dⱼ
+function diffusion_term(ρ₀, g, xᵢⱼ,Cb⁻¹,ρⱼ, ρᵢ, dᵢⱼ, η², h, c₀, m₀, ∇ᵢWᵢⱼ, δᵩ)
+    # TODO add diffusion term
 end
 
-function check_viscosity(ρᵢ, ρⱼ, vᵢⱼ, xᵢⱼ, h, invd²η², m₀, α, c₀, ∇ᵢWᵢⱼ)
-    ρ̄ᵢⱼ       = (ρᵢ+ρⱼ)*0.5
-    cond      = dot(vᵢⱼ, xᵢⱼ)
-    cond_bool = cond < 0.0
-    μᵢⱼ       = h*cond * invd²η²
-    Πᵢ        = - m₀ * (cond_bool*(-α*c₀*μᵢⱼ)/ρ̄ᵢⱼ) * ∇ᵢWᵢⱼ
-    Πⱼ        = - Πᵢ
-    Πᵢ, Πⱼ
+function viscosity_term(ρᵢ, ρⱼ, vᵢⱼ, xᵢⱼ, h, invd²η², m₀, α, c₀, ∇ᵢWᵢⱼ)
+   # TODO add viscosity term
 end
 
 let
@@ -406,7 +365,7 @@ let
         SimulationTime=2,
         OutputEach=0.01,
         FlagDensityDiffusion=false,
-        FlagViscosityTreatment = :ArtificialViscosity, #:None,
+        FlagViscosityTreatment = :None,
         FlagOutputKernelValues=false,
         FlagLog=true
     )
