@@ -400,7 +400,7 @@ let
     SimMetaDataDamBreak  = SimulationMetaData{Dimensions,FloatType}(
         SimulationName="Test", 
         SaveLocation="C:/Users/kirchejo/Repos/SPHExample/results/v0.5_other_symmetry_visco/",
-        SimulationTime=2,
+        SimulationTime=1.2,
         OutputEach=0.01,
         FlagDensityDiffusion=false,
         FlagViscosityTreatment = :None,
