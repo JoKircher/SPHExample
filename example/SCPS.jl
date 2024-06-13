@@ -347,12 +347,50 @@ function RunSimulation(;FluidCSV::String,
     end
 end
 
-function diffusion_term(ρ₀, g, xᵢⱼ,Cb⁻¹,ρⱼ, ρᵢ, dᵢⱼ, η², h, c₀, m₀, ∇ᵢWᵢⱼ, δᵩ)
-    # TODO add diffusion term
+"""
+    function viscosity_term(ρᵢ, ρⱼ, vᵢⱼ, xᵢⱼ, h, invd²η², m₀, α, c₀, ∇ᵢWᵢⱼ)
+
+function that models the artificial viscosity term.
+
+# Parameters:
+- `ρᵢ`: Density of particle i.
+- `ρⱼ`: Density of particle j.
+- `vᵢⱼ`: relative velocity between particle i and j.
+- `xᵢⱼ`: relative position between particle i and j.
+- `h`: smoothing length.
+- `invd²η²`: Muliplicative inverse of inv(xᵢⱼ²+η²) aka. 1/(xᵢⱼ²+η²)
+- `m₀`: Mass of particle
+- `α`: Artificial viscosity parameter. Default is 0.01.
+- `c₀`: Speed of sound.
+- ` ∇ᵢWᵢⱼ`: Kernel value of particle i.
+
+"""
+function viscosity_term(ρᵢ, ρⱼ, vᵢⱼ, xᵢⱼ, h, invd²η², m₀, α, c₀, ∇ᵢWᵢⱼ)
+    # TODO add viscosity term
 end
 
-function viscosity_term(ρᵢ, ρⱼ, vᵢⱼ, xᵢⱼ, h, invd²η², m₀, α, c₀, ∇ᵢWᵢⱼ)
-   # TODO add viscosity term
+"""
+    function diffusion_term(ρ₀, g, xᵢⱼ,Cb⁻¹,ρⱼ, ρᵢ, dᵢⱼ, η², h, c₀, m₀, ∇ᵢWᵢⱼ, δᵩ)
+
+function that models the artificial diffusion term.
+
+# Parameters:
+- `ρ₀`: rest density.
+- `g`: Gravitational constant (positive).
+- `xᵢⱼ`: relative position between particle i and j.
+- `Cb⁻¹`: Muliplicative inverse of pressure coefficient inv(c₀^2 * ρ₀)/γ) aka. 1/((c₀^2 * ρ₀)/γ
+- `ρⱼ`: Density of particle j.
+- `ρᵢ`: Density of particle i.
+- `dᵢⱼ`: distance between partilce i and j.
+- `η²`: eta, error term.
+- `h`: smoothing length.
+- `c₀`: Speed of sound.
+- `m₀`: Mass of particle.
+- ` ∇ᵢWᵢⱼ`: Kernel value of particle i.
+- `δᵩ`: Coefficient for density diffusion.
+"""
+function diffusion_term(ρ₀, g, xᵢⱼ,Cb⁻¹,ρⱼ, ρᵢ, dᵢⱼ, η², h, c₀, m₀, ∇ᵢWᵢⱼ, δᵩ)
+    # TODO add diffusion term
 end
 
 let
